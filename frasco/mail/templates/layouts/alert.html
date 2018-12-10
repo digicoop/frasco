@@ -1,0 +1,7 @@
+{% extends "layouts/base.html" %}
+
+{% block header %}
+  <{ mail_alert label=alert_label|default("good") }>
+  	{{ alert_message or subject }}
+  </{}>
+{% endblock %}

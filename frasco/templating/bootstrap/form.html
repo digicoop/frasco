@@ -1,0 +1,196 @@
+{% from "__macros__/bootstrap/ui.html" import ico, bs_btn %}
+
+
+{% macro bs_form(form=None, action="", method="POST", role="form", hidden_tags=True) -%}
+  {% if form %}{% do kwargs.setdefault("enctype", form.enctype) %}{% endif %}
+  {{ html_tag("form", action=action, method=method, role=role, **kwargs) }}
+    {% if form and hidden_tags %}{{ form.hidden_tag() }}{% endif %}
+    {{ caller() }}
+  </form>
+{%- endmacro %}
+
+
+{% macro bs_hform(form=None, action="") -%}
+  {% set c = caller %}
+  {% call bs_form(form, action, class_="form-horizontal " + kwargs.pop("class_", ""), **kwargs) %}{{ c() }}{% endcall %}
+{%- endmacro %}
+
+
+{% macro bs_iform(form=None, action="") -%}
+  {% set c = caller %}
+  {% call bs_form(form, action, class_="form-inline " + kwargs.pop("class_", ""), **kwargs) %}{{ c() }}{% endcall %}
+{%- endmacro %}
+
+
+{% macro bs_navbar_form(form=None, action="") -%}
+  {% set c = caller %}
+  {% call bs_form(form, action, class_="navbar-form " + kwargs.pop("class_", ""), **kwargs) %}{{ c() }}{% endcall %}
+{%- endmacro %}
+
+
+{% macro bs_form_group(label=None, label_for=None, required=False, has_error=False, has_feedback=False, size=None, use_cols=True, lbl_col_width=2, col_offset=False, sr_only=False) -%}
+  <div class="form-group{% if size %} form-group-{{ size }}{% endif %}{% if required %} required{% endif %}{% if has_error %} has-error{% endif %}{% if has_feedback %} has-feedback{% endif %}">
+    {% if label %}
+      <label {% if label_for %}for="{{ label_for }}" {% endif %}class="{% if use_cols %}col-sm-{{ lbl_col_width }} control-label{% endif %} {% if sr_only %}sr-only{% endif %}">
+        {{ label }}
+      </label>
+    {% endif %}
+    {% if use_cols %}<div class="col-sm-{{ 12 - lbl_col_width }} {% if col_offset %}col-sm-offset-{{ lbl_col_width }}{% endif %}">{% endif %}
+      {{ caller() }}
+    {% if use_cols %}</div>{% endif %}
+  </div>
+{%- endmacro %}
+
+
+{% macro bs_form_static_field(label, value=None, use_cols=False) -%}
+  {% set c = caller %}
+  {% call bs_form_group(label, use_cols=use_cols, **kwargs) %}
+    <p class="form-control-static">{{ c() if c else value }}</p>
+  {% endcall %}
+{%- endmacro %}
+
+
+{% macro bs_form_static_hfield(label, value) -%}
+  {{ bs_form_static_field(label, value, use_cols=True) }}
+{%- endmacro %}
+
+
+{% macro bs_form_field_group(field, inline=False) -%}
+  {% set has_error = field.errors and field.type != 'FieldList' %}
+  {% set label = field.label.text if field.type != 'BooleanField' else None %}
+  {% set col_offset = field.type == "BooleanField" %}
+  {% do kwargs.setdefault("sr_only", inline and field.type != 'BooleanField') %}
+  {% set c = caller %}
+  {% call bs_form_group(label, label_for=field.id, required=field.flags.required, has_error=has_error, col_offset=col_offset, **kwargs) %}
+    {{ c() }}
+  {% endcall %}
+{%- endmacro %}
+
+
+{% macro bs_form_field(field, inline=False, use_cols=False, size=None, icon=None, radio_inline=False) -%}
+  {% set attrs = kwargs %}
+  {% if field.flags.required %}{% do attrs.setdefault('required', 'required') %}{% endif %}
+  {% if inline %}
+    {% do attrs.setdefault('placeholder', field.label.text) %}
+  {% endif %}
+
+  {% if field.type in ('HiddenField', 'CSRFTokenField') %}
+    {{ field() }}
+  {% else %}
+    {% call bs_form_field_group(field, inline, has_feedback=((field.errors and not icon) or (inline and icon)), use_cols=use_cols, size=size) %}
+      {% if field.type == 'FieldList' %}
+        <ul class="form-fieldlist">
+        {% for f in field %}
+          <li>{{ bs_form_field_input(f, size=size, icon=icon, inline=radio_inline, **attrs) }}</li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        {{ bs_form_field_input(field, size=size, icon=icon, inline=radio_inline, **attrs) }}
+      {% endif %}
+      {% if field.errors and field.type != 'FieldList' %}
+        <p class="help-block">{{ field.errors|join(', ') }}</p>
+      {% endif %}
+      {% if field.description %}
+        <p class="help-block">{{ field.description|safe }}</p>
+      {% endif %}
+    {% endcall %}
+  {% endif %}
+{%- endmacro %}
+
+
+{% macro bs_form_ifield(field) -%}
+  {{ bs_form_field(field, inline=True, **kwargs) }}
+{%- endmacro %}
+
+
+{% macro bs_form_hfield(field) -%}
+  {{ bs_form_field(field, use_cols=True, **kwargs) }}
+{%- endmacro %}
+
+
+{% macro bs_form_style_input(prefix=None, suffix=None, icon=None, size=None, auto_wrapper=False) -%}
+  {% if not auto_wrapper or prefix or suffix %}
+  <div class="input-group{% if size %} input-group-{{ size }}{% endif %}">
+    {% if prefix %}<div class="input-group-addon">{{ prefix }}</div>{% endif %}
+  {% endif %}
+    {{ caller() }}
+    {% if icon %}{{ ico(icon, class_="form-control-feedback") }}{% endif %}
+  {% if not auto_wrapper or prefix or suffix %}
+    {% if suffix %}<div class="input-group-addon">{{ suffix }}</div>{% endif %}
+  </div>
+  {% endif %}
+{%- endmacro %}
+
+
+{% macro bs_form_field_input(field, inline=False, disabled=False, size=None, prefix=None, suffix=None, icon=None) -%}
+  {% set attrs = kwargs %}
+  {% if disabled %}{% do attrs.setdefault("disabled", "disabled") %}{% endif %}
+  {% if not icon and field.errors %}{% set icon="remove" %}{% endif %}
+  {% set class_ = "form-control" %}
+  {% if size %}{% set class_ = class_ + " input-" + size %}{% endif %}
+  {% call bs_form_style_input(prefix=prefix, suffix=suffix, icon=icon, size=size, auto_wrapper=True) %}
+    {% if field.type == 'BooleanField' %}
+      <div class="checkbox{% if disabled %} disabled{% endif %}">
+        <label>
+          {{ field(**attrs) }} {{ field.label.text }}
+        </label>
+      </div>
+    {% elif field.type == 'RadioField' %}
+      {% if inline %}
+        <div class="radio{% if disabled %} disabled{% endif %}">
+          {% for radio in field %}
+          <label class="radio-inline">
+            {{ radio(**attrs) }} {{ radio.label.text }}
+          </label>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% for radio in field %}
+          <div class="radio{% if disabled %} disabled{% endif %}">
+            <label>
+              {{ radio(**attrs) }} {{ radio.label.text }}
+            </label>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% elif field.type == 'FileField' %}
+      {{ field(**attrs) }}
+    {% else %}
+      {{ field(class_=class_, **attrs) }}
+    {% endif %}
+  {% endcall %}
+{%- endmacro %}
+
+
+{% macro bs_form_buttons(use_cols=False, lbl_col_width=2) -%}
+  {% if use_cols %}
+  <div class="form-group form-buttons">
+    <div class="col-sm-offset-{{ lbl_col_width }} col-sm-{{ 12 - lbl_col_width }}">
+  {% endif %}
+  {{ caller() }}
+  {% if use_cols %}
+    </div>
+  </div>
+  {% endif %}
+{%- endmacro %}
+
+
+{% macro bs_form_hbuttons() -%}
+  {% set c = caller %}
+  {% call bs_form_buttons(use_cols=True, **kwargs) %}
+    {{ c() }}
+  {% endcall %}
+{%- endmacro %}
+
+
+{% macro bs_form_btn(label="Submit", use_cols=False, lbl_col_width=2) -%}
+  {% set attrs = kwargs %}
+  {% call bs_form_buttons(use_cols=use_cols, lbl_col_width=lbl_col_width) %}
+    {{ bs_btn(label, type="submit", **attrs) }}
+  {% endcall %}
+{%- endmacro %}
+
+
+{% macro bs_form_hbtn(label="Submit") -%}
+  {{ bs_form_btn(label, use_cols=True, **kwargs) }}
+{%- endmacro %}

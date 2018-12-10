@@ -1,0 +1,74 @@
+{% from "__macros__/bootstrap/ui.html" import bs_btn %}
+
+
+{% macro bs_dropdown_items(menu_id="dropdown-menu", dropdown_right=False) -%}
+  <ul class="dropdown-menu{% if dropdown_right %} dropdown-menu-right{% endif %}" role="menu" aria-labelledby="{{ menu_id }}">
+    {{ caller() }}
+  </ul>
+{%- endmacro %}
+
+
+{% macro bs_dropdown_inner(label, menu_id="dropdown-menu", dropdown_right=False) -%}
+  {% set label = label + ' <span class="caret"></span>' %}
+  {% do kwargs.update(add_class="dropdown-toggle " + kwargs.get("add_class", "")) %}
+  {{ bs_btn(label|safe, id=menu_id, data_toggle="dropdown", **kwargs) }}
+  {% set c = caller %}
+  {% call bs_dropdown_items(menu_id, dropdown_right) %}{{ c() }}{% endcall %}
+{%- endmacro %}
+
+
+{% macro bs_dropdown(label, id=None, dropdown_class="dropdown", wrapper_tag="div") -%}
+  {{ html_tag(wrapper_tag, class_=dropdown_class, id=id) }}
+    {% set c = caller %}
+    {% call bs_dropdown_inner(label, **kwargs) %}
+      {{ c() }}
+    {% endcall %}
+  </{{ wrapper_tag }}>
+{%- endmacro %}
+
+
+{% macro bs_dropdown_btn(label) -%}
+  {% set c = caller %}
+  {% call bs_dropdown(label, dropdown_class="btn-group", **kwargs) %}
+    {{ c() }}
+  {% endcall %}
+{%- endmacro %}
+
+
+{% macro bs_nav_dropdown(label, id=None, dropdown_class="dropdown") -%}
+  {{ html_tag('li', class_=dropdown_class, id=id) }}
+    {% set c = caller %}
+    <a href="#" class="dropdown-toggle" data-toggle="dropdown">{{ label }} <span class="caret"></span></a>
+    {% call bs_dropdown_items(**kwargs) %}{{ c() }}{% endcall %}
+  </{{ wrapper_tag }}>
+{%- endmacro %}
+
+
+{% macro bs_dropdown_split_btn(label, id=None, menu_id="dropdown-menu", dropdown_right=False) -%}
+  {% set c = caller %}
+  {{ html_tag("div", class_="btn-group", id=id) }}
+    {{ bs_btn(label, **kwargs) }}
+    {% call bs_dropdown_inner("", menu_id, dropdown_right, **kwargs) %}
+      {{ c() }}
+    {% endcall %}
+  </div>
+{%- endmacro %}
+
+
+{% macro bs_dropdown_item(url="#", label=None, active=False, disabled=False) -%}
+  <li role="presentation" class="{% if active %}active{% endif %}{% if disabled %} disabled{% endif %}">
+    {{ html_tag("a", role="menuitem", tabindex="-1", href=url, **kwargs) }}
+      {% if label %}{{ label }}{% else %}{{ caller() }}{% endif %}
+    </a>
+  </li>
+{%- endmacro %}
+
+
+{% macro bs_dropdown_header(label=None) -%}
+  <li role="presentation" class="dropdown-header">{% if label %}{{ label }}{% else %}{{ caller() }}{% endif %}</li>
+{%- endmacro %}
+
+
+{% macro bs_dropdown_divider() -%}
+  <li role="presentation" class="divider"></li>
+{%- endmacro %}

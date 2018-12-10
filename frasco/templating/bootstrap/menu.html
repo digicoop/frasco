@@ -1,0 +1,40 @@
+{% from "__macros__/bootstrap/dropdown.html" import bs_nav_dropdown, bs_dropdown_divider, bs_dropdown_item %}
+{% from "__macros__/bootstrap/ui.html" import ico %}
+
+
+{% macro bs_menu_item(item) -%}
+  {% if item.is_visible() %}
+    {% set active = "active" if item.is_current() else "" %}
+    {% if item.childs %}
+      {% call bs_nav_dropdown(item.name) %}
+        {% for child in item.childs %}
+          {% if item.name == "--" %}
+            {{ bs_dropdown_divider() }}
+          {% else %}
+            {{ bs_dropdown_item(url_for(item.view) if item.view else '#', item.label, active) }}
+          {% endif %}
+        {% endfor %}
+      {% endcall %}
+    {% elif not item.separator %}
+      <li class="{{ active }}">
+        {{ html_tag('a', href=item.url(), **item.options.get('html_attrs', {})) }}
+          {% if item.icon %}{{ ico(item.icon) }} {% endif %}{{ item.label }}
+        </a>
+      </li>
+    {% endif %}
+  {% endif %}
+{%- endmacro %}
+
+
+{% macro bs_nav_menu(menu) -%}
+  {{ html_tag("ul", class_="nav " + kwargs.pop("class_", ""), **kwargs) }}
+    {% for item in menu %}
+      {{ bs_menu_item(item) }}
+    {% endfor %}
+  </ul>
+{%- endmacro %}
+
+
+{% macro bs_navbar_menu(menu) -%}
+  {{ bs_nav_menu(menu, class_="navbar-nav " + kwargs.pop("class_", ""), **kwargs) }}
+{%- endmacro %}

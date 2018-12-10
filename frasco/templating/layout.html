@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+{% block html_tag %}<html>{% endblock %}
+{% block page_head %}
+<head>
+  {% block head_meta %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% endblock %}
+  <title>{% block title %}{% if page_title %}{{ page_title }} | {% endif %}{{ app.config.get("TITLE", "Frasco App") }}{% endblock %}</title>
+  {% block head %}{% endblock %}
+</head>
+{% endblock %}
+{% block page_body %}
+{% block body_tag %}<body>{% endblock %}
+  {% block header %}{% endblock %}
+  {% block messages %}
+    {% flash_messages %}
+      <div class="flash-message flash-message-{{ category }}">{{ message }}</div>
+    {% endflash %}
+  {% endblock %}
+  {% block body %}
+    {% content %}{% endcontent %}
+  {% endblock %}
+  {% block footer %}{% endblock %}
+</body>
+{% endblock %}
+</html>

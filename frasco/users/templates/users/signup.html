@@ -1,0 +1,20 @@
+{% extends "users/layout.html" %}
+{% block users_title %}{{ _("Signup") }}{% endblock %}
+{% block head %}
+  {{ super() }}
+  {% if app.extensions.frasco_users.options['recaptcha_key'] %}
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  {% endif %}
+{% endblock %}
+{% block users_content %}
+<{ form_tag form }>
+  <{ form_field form.email }/>
+  {% if must_provide_password %}
+    <{ form_field form.password }/>
+  {% endif %}
+  {% if app.extensions.frasco_users.options['recaptcha_key'] %}
+  <div class="g-recaptcha" data-sitekey="{{ app.extensions.frasco_users.options['recaptcha_key'] }}"></div>
+  {% endif %}
+  <{ form_btn _("Signup") }/>
+</{}>
+{% endblock %}

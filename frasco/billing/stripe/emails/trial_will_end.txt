@@ -1,0 +1,7 @@
+---
+subject: Your trial is about to end
+---
+Hello,
+
+Your trial is about to end. Please connect to your account
+to subscribe to one of our plan.
