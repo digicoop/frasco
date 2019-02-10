@@ -14,8 +14,7 @@ from .signals import *
 babel_cli = AppGroup('babel', help='Commands to manage translations')
 
 
-@babel_cli.command('extract')
-def extract():
+def _extract():
     state = get_extension_state('frasco_babel')
     path = os.path.join(current_app.root_path, "translations")
     if not os.path.exists(path):
@@ -25,7 +24,7 @@ def extract():
     click.echo("Extracting translatable strings from %s" % path)
     mapping = create_babel_mapping(state.options["extract_jinja_dirs"],
         state.options["extract_with_jinja_exts"], state.options["extractors"])
-    exec_babel_extract(current_app.root_path, potfile, mapping, keywords)
+    exec_babel_extract(current_app.root_path, potfile, mapping)
 
     # we need to extract message from other paths independently then
     # merge the catalogs because babel's mapping configuration does
@@ -41,46 +40,43 @@ def extract():
     translation_extracted.send()
 
 
-@babel_cli.command('po2json')
-@click.argument('locale')
-@click.option('--output', '-o')
-def po2json(locale, output=None):
-    filename = os.path.join(current_app.root_path, "translations", locale, "LC_MESSAGES", "messages.po")
-    dump = po_to_json(filename)
-    if output:
-        with open(output, 'w') as f:
-            f.write(dump)
-    else:
-        click.echo(dump)
-
-
-@babel_cli.command('po2js')
-@click.argument('locale')
-@click.option('--output', '-o')
-def po2js(locale, output=None):
-    filename = os.path.join(current_app.root_path, "translations", locale, "LC_MESSAGES", "messages.po")
-    varname = get_extension_state('frasco_babel').options['js_catalog_varname']
-    dump = "var %s = %s;" % (varname % locale.upper(), po_to_json(filename))
-    if output:
-        with open(output, 'w') as f:
-            f.write(dump)
-    else:
-        click.echo(dump)
+@babel_cli.command('extract')
+def extract_cmd():
+    _extract()
 
 
 @babel_cli.command("init")
 @click.argument('locale')
 @click.option('--gotrans/--no-gotrans', default=False)
 def init_translation(locale, gotrans=False):
+    state = get_extension_state('frasco_babel')
     path = os.path.join(current_app.root_path, "translations")
     potfile = os.path.join(path, "messages.pot")
     if not os.path.exists(potfile):
-        extract()
+        _extract()
     click.echo("Initializing new translation '%s' in %s" % (locale, os.path.join(path, locale)))
-    shell_exec([bin, "init", "-i", potfile, "-d", path, "-l", locale])
+    shell_exec([state.options["babel_bin"], "init", "-i", potfile, "-d", path, "-l", locale])
     translation_updated.send(None, locale=locale)
     if gotrans:
         translate_with_google(locale)
+
+
+@babel_cli.command("update")
+@click.option('--extract/--no-extract', default=True)
+@click.option('--gotrans/--no-gotrans', default=False)
+def update_translations(extract=True, gotrans=False):
+    state = get_extension_state('frasco_babel')
+    path = os.path.join(current_app.root_path, "translations")
+    potfile = os.path.join(path, "messages.pot")
+    if not os.path.exists(potfile) or extract:
+        _extract()
+    click.echo("Updating all translations")
+    shell_exec([state.options["babel_bin"], "update", "-i", potfile, "-d", path])
+    for f in os.listdir(path):
+        if os.path.isdir(os.path.join(path, f)):
+            translation_updated.send(locale=f)
+            if gotrans:
+                translate_with_google(f)
 
 
 @babel_cli.command("compile")
@@ -93,32 +89,48 @@ def compile_translations():
         output = os.path.join(current_app.static_folder, state.options['compile_to_json'])
         for f in os.listdir(path):
             if os.path.isdir(os.path.join(path, f)):
-                po2json(f, output % f)
+                _po2json(f, output % f)
     if state.options['compile_to_js']:
         output = os.path.join(current_app.static_folder, state.options['compile_to_js'])
         for f in os.listdir(path):
             if os.path.isdir(os.path.join(path, f)):
-                po2js(f, output % f)
-
+                _po2js(f, output % f)
     translation_compiled.send()
 
 
-@babel_cli.command("update")
-@click.option('--extract/--no-extract', default=True)
-@click.option('--gotrans/--no-gotrans', default=False)
-def update_translations(extract=True, gotrans=False):
-    state = get_extension_state('frasco_babel')
-    path = os.path.join(current_app.root_path, "translations")
-    potfile = os.path.join(path, "messages.pot")
-    if not os.path.exists(potfile) or extract:
-        extract()
-    click.echo("Updating all translations")
-    shell_exec([state.options["babel_bin"], "update", "-i", potfile, "-d", path])
-    for f in os.listdir(path):
-        if os.path.isdir(os.path.join(path, f)):
-            translation_updated.send(locale=f)
-            if gotrans:
-                translate_with_google(info, f)
+def _po2json(locale, output=None):
+    filename = os.path.join(current_app.root_path, "translations", locale, "LC_MESSAGES", "messages.po")
+    dump = po_to_json(filename)
+    if output:
+        with open(output, 'w') as f:
+            f.write(dump)
+    else:
+        click.echo(dump)
+
+
+def _po2js(locale, output=None):
+    filename = os.path.join(current_app.root_path, "translations", locale, "LC_MESSAGES", "messages.po")
+    varname = get_extension_state('frasco_babel').options['js_catalog_varname']
+    dump = "var %s = %s;" % (varname % locale.upper(), po_to_json(filename))
+    if output:
+        with open(output, 'w') as f:
+            f.write(dump)
+    else:
+        click.echo(dump)
+
+
+@babel_cli.command('po2json')
+@click.argument('locale')
+@click.option('--output', '-o')
+def po2json(locale, output=None):
+    _po2json(locale, output)
+
+
+@babel_cli.command('po2js')
+@click.argument('locale')
+@click.option('--output', '-o')
+def po2js(locale, output=None):
+    _po2js(locale, output)
 
 
 @babel_cli.command("gotrans")

@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='1.0.0',
+    version='1.0.2',
     url='http://github.com/digicoop/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -11,7 +11,16 @@ setup(
     description='Set of extensions for Flask to develop SaaS applications',
     packages=find_packages(),
     package_data={
-        'frasco': ['templating/*.html', 'templating/bootstrap/*.html'],
+        'frasco': [
+            'angular/static/*.js',
+            'billing/invoicing/emails/*.html',
+            'mail/templates/*.html',
+            'mail/templates/layouts/*',
+            'templating/*.html',
+            'templating/bootstrap/*.html',
+            'users/emails/users/*.txt',
+            'users/templates/users/*.html'
+        ],
     },
     zip_safe=False,
     platforms='any',
