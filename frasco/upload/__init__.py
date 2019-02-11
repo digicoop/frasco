@@ -92,8 +92,9 @@ def upload_stream(stream, filename, **kwargs):
 
 
 def upload_file(pathname, **kwargs):
+    kwargs.setdefault('filename', pathname)
     with open(pathname, 'rb') as f:
-        upload_stream(f, pathname, **kwargs)
+        upload_stream(f, **kwargs)
 
 
 def delete_uploaded_file(filename, backend=None, **kwargs):

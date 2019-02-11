@@ -68,7 +68,5 @@ def auth_required(func):
 
 
 def authenticated_service(service):
-    @service.decorator
-    def decorator(func):
-        return auth_required
+    service.decorators.append(auth_required)
     return service
