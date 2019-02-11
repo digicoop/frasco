@@ -44,6 +44,13 @@ def get_current_user(user=None):
     if user_stack and user_stack.top:
         return user_stack.top
     return _get_user()
+
+
+def get_current_user_if_logged_in(user=None):
+    user = get_current_user(user)
+    if not user.is_authenticated:
+        return
+    return user
     
 
 current_user = LocalProxy(get_current_user)
