@@ -48,7 +48,7 @@ def create_invoice(**create_invoice_ref_kwargs):
         yield (invoice, state.ItemModel)
         db.session.add(invoice)
         invoice_issued.send(invoice)
-    if state.option['send_email'] and invoice.email:
+    if state.options['send_email'] and invoice.email:
         send_invoice_mail(invoice.email, invoice)
 
 

@@ -15,7 +15,7 @@ class S3StorageBackend(StorageBackend):
                        'async': False,
                        'signed_url': False,
                        's3_urls_ttl': 3600,
-                       'set_content_dispotion_header_with_filename': True,
+                       'set_content_disposition_header_with_filename': True,
                        'charset': None,
                        'use_sig_v4': False,
                        'region_name': None,
