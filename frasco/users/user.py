@@ -48,7 +48,7 @@ def get_current_user(user=None):
 
 def get_current_user_if_logged_in(user=None):
     user = get_current_user(user)
-    if not user.is_authenticated:
+    if not user or not user.is_authenticated:
         return
     return user
     
