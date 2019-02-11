@@ -58,13 +58,17 @@ def create_api_key(user=None, expires_at=None):
     return key
 
 
+def auth_required(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if not is_user_logged_in():
+            raise ApiAuthentificationRequiredError()
+        return func(*args, **kwargs)
+    return wrapper
+
+
 def authenticated_service(service):
     @service.decorator
     def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            if not is_user_logged_in():
-                raise ApiAuthentificationRequiredError()
-            return func(*args, **kwargs)
-        return wrapper
+        return auth_required
     return service
