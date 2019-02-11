@@ -76,25 +76,27 @@ class FrascoUpload(Extension):
 
 
 def save_uploaded_file(file, filename=None, backend=None, **kwargs):
+    state = get_extension_state('frasco_upload')
+    return_filename_with_backend = kwargs.pop('return_filename_with_backend', False) or backend is True
     if not isinstance(file, FileStorage):
         file = FileStorage(file)
     if not filename:
-        filename = generate_filename(file.filename, backend=backend, **kwargs)
-    r = filename
+        filename = generate_filename(file.filename, **kwargs)
     if not backend or backend is True:
         backend, filename = split_backend_from_filename(filename)
-    get_extension_state('frasco_upload').get_backend(backend).save(file, filename)
-    return r
+    state.get_backend(backend).save(file, filename)
+    if return_filename_with_backend:
+        return "%s://%s" % (backend or state.options['default_backend'], filename)
+    return filename
 
 
-def upload_stream(stream, filename, **kwargs):
-    return save_uploaded_file(FileStorage(stream, filename), **kwargs)
+def upload_stream(stream, filename, target_filename=None, **kwargs):
+    return save_uploaded_file(FileStorage(stream, filename), target_filename, **kwargs)
 
 
-def upload_file(pathname, **kwargs):
-    kwargs.setdefault('filename', pathname)
+def upload_file(pathname, filename=None, **kwargs):
     with open(pathname, 'rb') as f:
-        upload_stream(f, **kwargs)
+        upload_stream(f, filename or pathname, **kwargs)
 
 
 def delete_uploaded_file(filename, backend=None, **kwargs):
