@@ -106,7 +106,7 @@ def upload_file_to_s3(stream_or_filename, filename, bucket=None, prefix=None,
         if 'Content-Type' not in headers:
             headers['Content-Type'] = 'binary/octet-stream' # S3 default mimetype
         headers['Content-Type'] += '; charset=%s' % (charset or options['charset'])
-    headers.update(options['contents_headers'])
+    headers.update(options['set_contents_headers'])
     is_filename = isinstance(stream_or_filename, (str, unicode))
     if is_filename:
         bucket_key.set_contents_from_filename(stream_or_filename, headers, policy=acl)
