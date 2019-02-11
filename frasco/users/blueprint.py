@@ -98,7 +98,7 @@ def signup():
             if not check_rate_limit(request.remote_addr, 'signup_from', 'signup_at'):
                 raise UserValidationFailedError()
 
-            if state.options['recaptcha_secret']:
+            if state.options['recaptcha_secret'] and not current_app.debug and not current_app.testing:
                 is_captcha_success = False
                 if 'g-recaptcha-response' in request.form:
                     try:

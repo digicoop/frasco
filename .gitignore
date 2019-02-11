@@ -1,2 +1,3 @@
 *.pyc
 /frasco.egg-info
+/dist
