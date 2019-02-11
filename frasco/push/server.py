@@ -150,4 +150,4 @@ if __name__ == '__main__':
     argparser.add_argument('-s', '--secret', default=os.environ.get('SIO_SECRET'), type=str,
         help='Secret')
     args = argparser.parse_args()
-    run_server(args.port, redis_url=args.redis, channel=args.channel, secret=args.secret)
+    run_server(args.port, redis_url=args.redis_url, channel=args.channel, secret=args.secret)
