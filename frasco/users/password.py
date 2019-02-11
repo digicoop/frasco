@@ -76,8 +76,8 @@ def update_password(user, password, skip_validation=False, **kwargs):
     """
     state = get_extension_state('frasco_users')
     pwhash = hash_password(password)
-    if not skip_validation:
-        validate_password(user, password, pwhash=pwhash, **kwargs)
+    if not skip_validation and not validate_password(user, password, pwhash=pwhash, **kwargs):
+        return False
     if state.options['prevent_password_reuse']:
         user.previous_passwords = [user.password] + (user.previous_passwords or [])
         if state.options['max_password_reuse_saved']:
@@ -89,6 +89,7 @@ def update_password(user, password, skip_validation=False, **kwargs):
     user.must_reset_password_at_login = False
     password_updated.send(user=user)
     logger.info('Password changed for user #%s' % user.id)
+    return True
 
 
 def generate_reset_password_token(user):

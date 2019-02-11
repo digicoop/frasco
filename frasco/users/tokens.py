@@ -1,4 +1,5 @@
 from flask import current_app, abort
+from frasco.ext import get_extension_state
 from itsdangerous import URLSafeTimedSerializer, BadSignature
 from werkzeug.local import LocalProxy
 
@@ -19,7 +20,8 @@ def generate_user_token(user, salt=None):
 
 def read_user_token(token, salt=None, max_age=None):
     try:
-        return user_token_serializer.loads(token, salt=salt, max_age=max_age)
+        user_id = user_token_serializer.loads(token, salt=salt, max_age=max_age)
+        return get_extension_state('frasco_users').Model.query.get(user_id)
     except BadSignature:
         return None
 
