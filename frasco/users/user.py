@@ -99,7 +99,7 @@ def login_user(user, *args, **kwargs):
     return True
     
 
-def signup_user(email_or_user, password=None, provider=None, flash_messages=True, **kwargs):
+def signup_user(email_or_user, password=None, provider=None, flash_messages=True, send_signal=True, **kwargs):
     state = get_extension_state('frasco_users')
     if isinstance(email_or_user, state.Model):
         user = email_or_user
@@ -131,7 +131,8 @@ def signup_user(email_or_user, password=None, provider=None, flash_messages=True
         send_mail(user.email, template, user=user)
 
     logger.info('New signup as #%s' % user.id)
-    user_signed_up.send(user=user)
+    if send_signal:
+        user_signed_up.send(user=user)
     return user
 
 
