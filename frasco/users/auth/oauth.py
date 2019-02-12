@@ -84,6 +84,11 @@ class OAuthUserModelMixin(object):
         else:
             populate_obj(oauth_token, props)
 
+    def remove_oauth_token(self, provider):
+        token = self.get_oauth_token(provider)
+        if token:
+            self.oauth_tokens.remove(token)
+
 
 oauth = OAuth()
 
