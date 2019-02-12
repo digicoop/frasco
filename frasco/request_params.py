@@ -149,8 +149,7 @@ class RequestParam(object):
                     return value.lower() not in ('False', 'false', 'no', '0')
                 return bool(value)
             return type(value)
-        except Exception as e:
-            current_app.log_exception(e)
+        except:
             abort(400)
 
     def load(self, *values):
