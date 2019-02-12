@@ -108,7 +108,7 @@ class FrascoUsersLDAP(Extension):
             user = UserModel.query.filter(
                 getattr(UserModel, state.options['track_uuid_attr']) == attrs[state.options['track_uuid']][0]).first()
         else:
-            user = UserModel.query.filter(UserModel.email == attrs[state.options['email_attr']][0]).first()
+            user = UserModel.query.filter(UserModel.email == attrs[state.options['email_attr']][0].lower()).first()
 
         if user:
             ldap_login.send(user=user, dn=dn, attrs=attrs, conn=conn)
