@@ -75,7 +75,6 @@ class FrascoMail(Extension):
             (state.options["log_messages"] is None and app.testing):
             email_dispatched.connect(lambda msg, app: log_message(msg, app, state.options['dumped_messages_folder']), weak=False)
 
-        state.locale = None
         if has_extension('frasco_babel', app):
             if state.options['default_locale'] is None:
                 state.options['default_locale'] = app.extensions.frasco_babel.options['default_locale']

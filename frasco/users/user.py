@@ -128,7 +128,7 @@ def signup_user(email_or_user, password=None, provider=None, flash_messages=True
     if state.options["send_welcome_email"]:
         from frasco.mail import send_mail
         template = "users/welcome.txt" if state.options["send_welcome_email"] == True else state.options["send_welcome_email"]
-        send_mail(user.email, template, user=user)
+        send_mail(user.email, template, user=user, locale=getattr(user, 'locale', None))
 
     logger.info('New signup as #%s' % user.id)
     if send_signal:

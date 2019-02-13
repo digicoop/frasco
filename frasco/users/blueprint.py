@@ -197,6 +197,7 @@ def reset_password(token):
         if state.options['login_user_on_reset_password']:
             login_user(user)
         db.session.commit()
+        send_mail(user.email, "users/reset_password_done.txt", locale=getattr(user, 'locale', None))
         if msg:
             flash(msg, "success")
         if redirect_to:

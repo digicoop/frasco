@@ -105,7 +105,7 @@ def send_reset_password_token(user):
     """
     from frasco.mail import send_mail
     token = generate_reset_password_token(user)
-    send_mail(user.email, "users/reset_password.txt", user=user, token=token)
+    send_mail(user.email, "users/reset_password.txt", user=user, token=token, locale=getattr(user, 'locale', None))
     reset_password_sent.send(user=user, token=token)
     logger.info('Password reset token sent to user #%s' % user.id)
     return token

@@ -1,4 +1,4 @@
-from flask import g
+from flask import g, current_app
 from frasco.ext import get_extension_state
 from frasco.utils import remove_yaml_frontmatter
 from flask_mail import Message, Attachment
@@ -22,13 +22,12 @@ except ImportError:
 __all__ = ('render_message', 'create_message', 'log_message')
 
 
-def get_template_source(template_filename):
+def get_template_source(template_filename, locale=None):
     state = get_extension_state('frasco_mail')
     filename, ext = os.path.splitext(template_filename)
 
     localized_filename = None
     if state.options['localized_emails']:
-        locale = state.locale
         if locale is None and 'current_locale' in g:
             locale = g.current_locale
         if locale and locale != state.options['default_locale']:
@@ -44,16 +43,17 @@ def get_template_source(template_filename):
         # multiple extensions are provided
         filename, ext = os.path.splitext(tpl_filename)
         if "," in ext:
-            tpl_filename = filename + ext.split(",")[0]
+            source_filename = filename + ext.split(",")[0]
+        else:
+            source_filename = tpl_filename
         try:
-            source, _, __ = state.jinja_env.loader.get_source(state.jinja_env, tpl_filename)
+            source, _, __ = state.jinja_env.loader.get_source(state.jinja_env, source_filename)
         except TemplateNotFound:
             pass
         if source:
-            break
-    if source is None:
-        raise TemplateNotFound(template_filename)
-    return source
+            return tpl_filename, source
+
+    raise TemplateNotFound(template_filename)
 
 
 def render_message(template_filename, vars=None, auto_render_missing_content_type=None,
@@ -66,7 +66,7 @@ def render_message(template_filename, vars=None, auto_render_missing_content_typ
     vars = vars or {}
     vars.update(kwargs_vars)
 
-    source = get_template_source(template_filename)
+    template_filename, source = get_template_source(template_filename, vars.get('locale'))
     source, frontmatter_source = remove_yaml_frontmatter(source, True)
     frontmatter = None
     if frontmatter_source:
