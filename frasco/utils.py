@@ -94,7 +94,7 @@ def remove_yaml_frontmatter(source, return_frontmatter=False):
 def parse_yaml_frontmatter(source):
     source, frontmatter = remove_yaml_frontmatter(source, True)
     if frontmatter:
-        return (yaml.load(frontmatter), source)
+        return (yaml.safe_load(frontmatter), source)
     return (None, source)
 
 

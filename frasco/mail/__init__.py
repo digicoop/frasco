@@ -1,11 +1,12 @@
 from flask import g, current_app
 from frasco.ext import *
 from frasco.ctx import ContextStack
+from frasco.tasks import enqueue_task
+from frasco.templating.extensions import RemoveYamlFrontMatterExtension
 from jinja_macro_tags import MacroLoader, MacroRegistry
 from flask_mail import Mail, email_dispatched
 from jinja2 import ChoiceLoader, FileSystemLoader, PackageLoader
 from contextlib import contextmanager
-from frasco.tasks import enqueue_task
 import os
 import datetime
 
@@ -64,6 +65,7 @@ class FrascoMail(Extension):
 
         state.add_template_folder(os.path.join(app.root_path, "emails"))
         state.jinja_env = app.jinja_env.overlay(loader=state.jinja_loader)
+        state.jinja_env.add_extension(RemoveYamlFrontMatterExtension)
         state.jinja_env.macros = MacroRegistry(state.jinja_env) # the overlay methods does not call the constructor of extensions
         state.jinja_env.macros.register_from_template("layouts/macros.html")
         state.jinja_env.default_layout = state.options["default_layout"]

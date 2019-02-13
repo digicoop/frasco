@@ -28,7 +28,7 @@ class Config(FlaskConfig):
 
         try:
             with open(filename) as yaml_file:
-                obj = yaml.load(yaml_file.read())
+                obj = yaml.safe_load(yaml_file.read())
         except IOError as e:
             if silent and e.errno in (errno.ENOENT, errno.EISDIR):
                 return False

@@ -1,8 +1,9 @@
 from flask import g
 from frasco.ext import get_extension_state
-from frasco.utils import parse_yaml_frontmatter
+from frasco.utils import remove_yaml_frontmatter
 from flask_mail import Message, Attachment
 from jinja2 import TemplateNotFound
+import yaml
 import os
 import markdown
 import premailer
@@ -66,9 +67,12 @@ def render_message(template_filename, vars=None, auto_render_missing_content_typ
     vars.update(kwargs_vars)
 
     source = get_template_source(template_filename)
-    frontmatter, source = parse_yaml_frontmatter(state.jinja_env.from_string(source).render(**vars))
-    if frontmatter:
-        vars = dict(frontmatter, **vars)
+    source, frontmatter_source = remove_yaml_frontmatter(source, True)
+    frontmatter = None
+    if frontmatter_source:
+        frontmatter = yaml.safe_load(state.jinja_env.from_string(re.sub("^---\n", "", frontmatter_source)).render(**vars))
+        if frontmatter:
+            vars = dict(frontmatter, **vars)
 
     filename, ext = os.path.splitext(template_filename)
     templates = [("%s.%s" % (filename, e), e) for e in ext[1:].split(",")]

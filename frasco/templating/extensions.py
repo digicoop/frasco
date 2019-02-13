@@ -86,6 +86,16 @@ def jinja_block_as_fragment_extension(name, tagname=None, classname=None):
         "tags": set([tagname]), "end_tag": "end" + tagname, "block_name": name})
 
 
+class RemoveYamlFrontMatterExtension(Extension):
+    """Jinja extension to remove YAML front-matters
+    """
+    def preprocess(self, source, name, filename=None):
+        before = ""
+        if source.startswith("{% load_macro"):
+            before, source = source.split("\n", 1)
+        return before + remove_yaml_frontmatter(source)
+
+
 @jinja_fragment_extension("flash_messages", endtag="endflash", allow_args=False,
                           callblock_args=["message", "category"])
 def FlashMessagesExtension(caller=None):
