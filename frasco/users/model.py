@@ -1,4 +1,4 @@
-from frasco.models import db
+from frasco.models import db, transaction
 from frasco.models.utils import MutableList
 from frasco.redis import redis
 from flask_login import UserMixin
@@ -59,7 +59,8 @@ class UserLastAccessAtModelMixin(object):
             return
         today_key = "users-last-access-%s" % datetime.date.today().isoformat()
         if not redis.getbit(today_key, self.id):
-            self.last_access_at = datetime.date.today()
+            with transaction():
+                self.last_access_at = datetime.date.today()
             redis.setbit(today_key, self.id, 1)
             redis.expire(today_key, 86500)
 
