@@ -99,10 +99,10 @@ def send_message_async(msg):
     enqueue_task(send_message, msg=msg)
 
 
-def send_mail(template_filename, *args, **kwargs):
+def send_mail(to, template_filename, *args, **kwargs):
     state = get_extension_state('frasco_mail')
     force_sync = kwargs.pop('_force_sync', False)
-    msg = create_message(template_filename, *args, **kwargs)
+    msg = create_message(to, template_filename, *args, **kwargs)
     if msg:
         if has_extension('tasks') and state.options['send_async'] and not force_sync:
             send_message_async(msg)
