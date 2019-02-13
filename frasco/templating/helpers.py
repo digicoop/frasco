@@ -23,7 +23,7 @@ def html_attributes(attrs=None, **kwargs):
         if isinstance(v, bool):
             v = k if v else ""
         k = k.replace("_", "-")
-        html.append('%s="%s"' % (k, str(v).strip()))
+        html.append(u'%s="%s"' % (k, unicode(v).strip()))
     return Markup(" ".join(html))
 
 

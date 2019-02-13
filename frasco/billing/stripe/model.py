@@ -55,7 +55,7 @@ class StripeModelMixin(object):
         customer = stripe.Customer.create(**kwargs)
         self.stripe_customer_id = customer.id if customer else None
         self._update_stripe_source()
-        logger.info('Customer %s for model #%s created' % (customer.id, self.id))
+        logger.info(u'Customer %s for model #%s created' % (customer.id, self.id))
         return customer
 
     def update_stripe_customer(self, **kwargs):
@@ -64,7 +64,7 @@ class StripeModelMixin(object):
             setattr(customer, k, v)
         customer.save()
         self._update_stripe_source()
-        logger.info('Customer %s updated' % self.stripe_customer_id)
+        logger.info(u'Customer %s updated' % self.stripe_customer_id)
 
     def _update_stripe_source(self):
         self.__dict__.pop('stripe_customer', None)
@@ -77,17 +77,17 @@ class StripeModelMixin(object):
         if self.stripe_customer_id:
             try:
                 self.stripe_customer.delete()
-                logger.info('Customer %s deleted' % self.stripe_customer_id)
+                logger.info(u'Customer %s deleted' % self.stripe_customer_id)
             except stripe.error.InvalidRequestError as e:
-                if 'No such customer' not in e.message:
-                    logger.warning("Customer %s that was to be deleted didn't exist anymore in Stripe" % self.stripe_customer_id)
+                if u'No such customer' not in unicode(e):
+                    logger.warning(u"Customer %s that was to be deleted didn't exist anymore in Stripe" % self.stripe_customer_id)
                     raise
         self.stripe_customer_id = None
 
     def add_stripe_source(self, token=None, **source_details):
         self.stripe_customer.sources.create(source=token or source_details)
         self._update_stripe_source()
-        logger.info('Added new stripe source to %s' % self.stripe_customer_id)
+        logger.info(u'Added new stripe source to %s' % self.stripe_customer_id)
 
     def remove_stripe_source(self, source_id=None):
         if not source_id:
@@ -98,7 +98,7 @@ class StripeModelMixin(object):
             return
         source.delete()
         self._update_stripe_source()
-        logger.info('Removed stripe source from %s' % self.stripe_customer_id)
+        logger.info(u'Removed stripe source from %s' % self.stripe_customer_id)
 
     def charge_stripe_customer(self, amount, **kwargs):
         kwargs['customer'] = self.stripe_customer_id
@@ -183,7 +183,7 @@ class StripeSubscriptionModelMixin(StripeModelMixin):
 
         subscription = self.stripe_customer.subscriptions.create(**params)
         self._update_stripe_subscription(subscription)
-        logger.info('Subscribed customer %s to plan %s' % (self.stripe_customer_id, plan))
+        logger.info(u'Subscribed customer %s to plan %s' % (self.stripe_customer_id, plan))
         return subscription
 
     def update_stripe_subscription(self, **kwargs):
@@ -192,12 +192,12 @@ class StripeSubscriptionModelMixin(StripeModelMixin):
             setattr(subscription, k, v)
         subscription.save()
         self._update_stripe_subscription(subscription)
-        logger.info('Subscription %s updated for %s' % (self.stripe_subscription_id, self.stripe_customer_id))
+        logger.info(u'Subscription %s updated for %s' % (self.stripe_subscription_id, self.stripe_customer_id))
 
     def cancel_stripe_subscription(self):
         self.stripe_subscription.delete()
         self._update_stripe_subscription(False)
-        logger.info('Subscription %s cancelled for %s' % (self.stripe_subscription_id, self.stripe_customer_id))
+        logger.info(u'Subscription %s cancelled for %s' % (self.stripe_subscription_id, self.stripe_customer_id))
 
     def _update_stripe_subscription(self, subscription=None):
         if subscription is None:

@@ -228,6 +228,9 @@ class ShellError(Exception):
         self.returncode = returncode
         self.stderr = stderr
 
+    def __unicode__(self):
+        return unicode(self.stderr)
+
 
 def shell_exec(args, echo=True, fg="green", **kwargs):
     kwargs["stdout"] = subprocess.PIPE

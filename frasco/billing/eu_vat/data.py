@@ -107,8 +107,7 @@ def get_ticc_soap_client():
 
 
 class EUVATError(Exception):
-    def __init__(self, message):
-        self.message = message
+    pass
 
 
 def get_vat_rate(country_code, rate_type='standard'):

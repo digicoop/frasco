@@ -31,6 +31,9 @@ class PasswordValidationFailedError(Exception):
         self.reason = reason
         self.rule = rule
 
+    def __unicode__(self):
+        return self.reason
+
 
 def validate_password(user, password, flash_messages=True, raise_error=True, pwhash=None):
     state = get_extension_state('frasco_users')

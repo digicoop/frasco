@@ -12,7 +12,7 @@ def get_vat_rate(country_code):
     try:
         return data.get_vat_rate(country_code)
     except data.EUVATError as e:
-        raise ApiInputError(e.message)
+        raise ApiInputError(unicode(e))
 
 
 @eu_vat_service.route('/validate-vat-number', methods=['POST'])
@@ -21,7 +21,7 @@ def validate_vat_number(vat_number):
     try:
         return data.validate_vat_number(vat_number, invalid_format_raise_error=True)
     except data.EUVATError as e:
-        raise ApiInputError(e.message)
+        raise ApiInputError(unicode(e))
 
 
 @eu_vat_service.route('/exchange-rates/<country_code>', methods=['POST'])
@@ -32,7 +32,7 @@ def get_exchange_rate(country_code, src_currency='EUR'):
     try:
         return data.get_exchange_rate(country_code, src_currency)
     except data.EUVATError as e:
-        raise ApiInputError(e.message)
+        raise ApiInputError(unicode(e))
 
 
 @eu_vat_service.route('/check', methods=['POST'])

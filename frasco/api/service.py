@@ -5,32 +5,7 @@ from frasco.marshaller import disable_marshaller
 from werkzeug.wrappers import Response
 import functools
 from .swagger import build_swagger_spec, build_swagger_client
-
-
-class ApiError(Exception):
-    def __init__(self, message, http_code=500):
-        self.message = message
-        self.http_code = http_code
-
-
-class ApiInputError(ApiError):
-    def __init__(self, message="Invalid Request"):
-        super(ApiInputError, self).__init__(message, 400)
-
-
-class ApiAuthentificationRequiredError(ApiError):
-    def __init__(self, message="Authentification Required"):
-        super(ApiAuthentificationRequiredError, self).__init__(message, 401)
-
-
-class ApiNotAuthorizedError(ApiError):
-    def __init__(self, message="Not Authorized"):
-        super(ApiNotAuthorizedError, self).__init__(message, 403)
-
-
-class ApiNotFoundError(ApiError):
-    def __init__(self, message="Not Found"):
-        super(ApiNotFoundError, self).__init__(message, 404)
+from .errors import *
 
 
 def wrap_service_func_for_endpoint(func):
@@ -39,7 +14,7 @@ def wrap_service_func_for_endpoint(func):
         try:
             rv = func(*args, **kwargs)
         except ApiError as e:
-            return make_response(json.dumps({"error": e.message}), e.http_code)
+            return make_response(json.dumps({"error": unicode(e)}), e.http_code)
         if isinstance(rv, Response):
             return rv
         return json.dumps(rv), {'Content-Type': 'application/json;charset=UTF-8'}
@@ -73,11 +48,11 @@ class ApiService(object):
     def add_endpoint(self, rule, func, **options):
         endpoint = options.pop("endpoint", func.__name__)
         self.rules.append((rule, endpoint, options))
-        self.endpoint_funcs[endpoint] = func
+        self.endpoint_funcs[endpoint] = self._apply_decorators(func)
 
     def iter_endpoints(self):
         for rule, endpoint, options in self.rules:
-            yield rule, endpoint, self._apply_decorators(self.endpoint_funcs[endpoint]), options
+            yield rule, endpoint, self.endpoint_funcs[endpoint], options
 
     def route(self, rule, **options):
         def decorator(func):
