@@ -1,6 +1,6 @@
 from frasco.ext import *
 from frasco.assets import expose_package, register_assets_builder
-from frasco.api.service import join_url_rule
+from frasco.utils import join_url_rule
 from flask import render_template
 import os
 import json

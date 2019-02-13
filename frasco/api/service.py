@@ -1,5 +1,5 @@
 from flask import json, make_response, Blueprint, url_for, jsonify, g
-from frasco.utils import cached_property
+from frasco.utils import cached_property, join_url_rule
 from frasco.request_params import disable_request_params
 from frasco.marshaller import disable_marshaller
 from werkzeug.wrappers import Response
@@ -27,14 +27,6 @@ def wrap_service_func_for_internal_call(func):
         with disable_marshaller(), disable_request_params():
             return func(*args, **kwargs)
     return wrapper
-
-
-def join_url_rule(rule1, rule2):
-    if not rule1:
-        return rule2
-    if not rule2:
-        return rule1
-    return (rule1.rstrip('/') + '/' + rule2.lstrip('/')).rstrip('/')
 
 
 class ApiService(object):
@@ -110,9 +102,10 @@ class ApiVersion(ApiService):
         self.import_name = import_name
         self.services = {}
 
-    @cached_property
-    def apispec_as_json(self):
-        return build_swagger_spec(self).to_dict()
+    def build_apispec(self, refresh=False):
+        if 'apispec' not in self.__dict__ or refresh:
+            self.__dict__['apispec'] = build_swagger_spec(self).to_dict()
+        return self.__dict__['apispec']
 
     def add_service(self, service):
         self.services[service.name] = service
@@ -167,11 +160,11 @@ class ApiVersion(ApiService):
 
         @bp.route('/spec.json')
         def get_spec():
-            return jsonify(**self.apispec_as_json)
+            return jsonify(**self.build_apispec())
 
         @bp.route("/client.js")
         def get_client():
-            return build_swagger_client(self.apispec_as_json, url_for('.get_spec', _external=True),
+            return build_swagger_client(self.build_apispec(), url_for('.get_spec', _external=True),
                 client_var_name, client_class_name)
 
         return bp

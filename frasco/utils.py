@@ -277,3 +277,11 @@ def remove_all_handlers_from_logger(logger):
 class ExcludeWerkzeugLogFilter(logging.Filter):
     def filter(self, record):
         return record.name != 'werkzeug'
+
+
+def join_url_rule(rule1, rule2):
+    if not rule1:
+        return rule2
+    if not rule2:
+        return rule1
+    return (rule1.rstrip('/') + '/' + rule2.lstrip('/')).rstrip('/')
