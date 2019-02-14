@@ -54,7 +54,7 @@ class FrascoMail(Extension):
                 "localized_emails": None,
                 "default_locale": None,
                 "markdown_options": {},
-                "supress_send": False,
+                "suppress_send": False,
                 "silent_failures": False,
                 "send_async": False}
 
@@ -82,7 +82,7 @@ class FrascoMail(Extension):
 def send_message(msg):
     state = get_extension_state('frasco_mail')
 
-    if state.options['supress_send']:
+    if state.options['suppress_send']:
         if state.options["log_messages"] or current_app.testing or current_app.debug:
             log_message(msg, state.options['dumped_messages_folder'])
         email_sent.send(msg)

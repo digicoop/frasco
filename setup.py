@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='1.0.20',
+    version='1.0.21',
     url='http://github.com/digicoop/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
