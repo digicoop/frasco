@@ -134,8 +134,8 @@ def create_message(to, tpl, **kwargs):
     return msg
 
 
-def log_message(message, app, dump_dir=None):
-    logging.getLogger('frasco.mail').debug("Email %s sent to %s as \"%s\"" % (message.template, message.recipients, message.subject))
+def log_message(message, dump_dir=None):
+    logging.getLogger('frasco.mail').info("Email %s sent to %s as \"%s\"" % (message.template, message.recipients, message.subject))
     if dump_dir:
         if not os.path.exists(dump_dir):
             os.mkdir(dump_dir, 0777)

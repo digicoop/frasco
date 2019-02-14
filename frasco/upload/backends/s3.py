@@ -1,15 +1,13 @@
 from flask import current_app, g
 from frasco.ext import get_extension_state, has_extension
-from frasco.upload.backends import StorageBackend, register_upload_backend
+from frasco.upload.backend import StorageBackend
 from frasco.upload.utils import save_uploaded_file_temporarly
 from frasco.tasks import enqueue_task
 import boto
 import os
 
 
-@register_upload_backend
 class S3StorageBackend(StorageBackend):
-    name = 's3'
     default_options = {'filename_prefix': '',
                        'acl': 'public-read',
                        'async': False,

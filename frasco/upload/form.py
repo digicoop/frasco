@@ -43,7 +43,7 @@ class FileField(BaseFileField):
         if self.upload_dir:
             self.filename = os.path.join(self.upload_dir, self.filename)
         if self.backend_in_filename:
-            self.data = self.upload_backend.name + '://' + self.filename
+            self.data = self._upload_backend + '://' + self.filename
         else:
             self.data = self.filename
 

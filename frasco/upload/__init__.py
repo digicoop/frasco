@@ -1,4 +1,5 @@
 from frasco.ext import *
+from frasco.utils import import_class
 from flask import send_from_directory
 from flask.wrappers import Request
 from werkzeug import FileStorage
@@ -7,7 +8,7 @@ from tempfile import TemporaryFile
 import uuid
 import os
 
-from .backends import *
+from .backend import StorageBackend, split_backend_from_filename
 from .utils import *
 
 
@@ -44,10 +45,8 @@ class FrascoUploadState(ExtensionState):
             name = self.options['default_backend']
         if name not in self.backends:
             options = self._get_backend_options(name)
-            backend = options.get('backend', name)
-            if backend not in UPLOAD_BACKENDS:
-                raise FrascoUploadError("Upload backend '%s' does not exist" % backend)
-            self.backends[name] = UPLOAD_BACKENDS[backend](options)
+            backend_class = import_class(options.get('backend', name), StorageBackend, "frasco.upload.backends")
+            self.backends[name] = backend_class(options)
         return self.backends[name]
 
 

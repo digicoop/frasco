@@ -72,6 +72,32 @@ def find_classes_in_module(module, clstypes):
     return classes
 
 
+class ImportClassError(ImportError):
+    pass
+
+
+def import_class(impstr, clstypes, fallback_package=None):
+    if not isinstance(clstypes, (tuple, list)):
+        clstypes = (clstypes,)
+
+    try:
+        cls = import_string(impstr)
+    except ImportError as e:
+        if not fallback_package or 'No module named' not in str(e):
+            raise
+        cls = import_string(fallback_package + "." + impstr)
+
+    if inspect.ismodule(cls):
+        classes = find_classes_in_module(cls, clstypes)
+        if len(classes) > 1:
+            raise ImportClassError('Too many extension classes in module')
+        return classes[0]
+
+    if not isinstance(cls, clstypes):
+        raise ImportClassError("Wrong class type")
+    return cls
+
+
 def remove_yaml_frontmatter(source, return_frontmatter=False):
     """If there's one, remove the YAML front-matter from the source
     """

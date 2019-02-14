@@ -1,6 +1,6 @@
 from flask import current_app, has_app_context
 from frasco.utils import (AttrDict, import_string, find_classes_in_module, extract_unmatched_items,
-                          import_string, deep_update_dict)
+                          import_string, import_class, deep_update_dict)
 import functools
 import inspect
 import logging
@@ -34,6 +34,14 @@ class ExtensionState(object):
             import_name = self.get_option(name)
         if import_name:
             return import_string(import_name)
+
+    def import_option_as_class(self, name, clstypes, fallback_package=None, required=True):
+        if required:
+            import_name = self.require_option(name)
+        else:
+            import_name = self.get_option(name)
+        if import_name:
+            return import_class(import_name, clstypes, fallback_package)
 
 
 class Extension(object):
@@ -124,12 +132,7 @@ def load_extensions_from_config(app, key='EXTENSIONS'):
             ext_module, options = spec
         elif isinstance(spec, dict):
             ext_module, options = spec.items()[0]
-        ext_class = import_string(ext_module)
-        if inspect.ismodule(ext_class):
-            ext_classes = find_classes_in_module(ext_class, (Extension,))
-            if len(ext_classes) > 1:
-                raise ExtensionError('Too many extension classes in module')
-            ext_class = ext_classes[0]
+        ext_class = import_class(ext_module, Extension)
         loaded.append(ext_class(app, **options))
         logging.getLogger('frasco').info("Extension '%s.%s' loaded" % (ext_class.__module__, ext_class.__name__))
     return loaded
