@@ -167,17 +167,21 @@ def oauth_signup():
 @users_blueprint.route('/login/reset-password', methods=['GET', 'POST'])
 def send_reset_password():
     state = get_extension_state('frasco_users')
-    msg = state.options["reset_password_token_success_message"]
+    success_msg = state.options["reset_password_token_success_message"]
+    error_msg = state.options["reset_password_token_error_message"]
     redirect_to = state.options["redirect_after_reset_password_token"]
 
     form = state.import_option('send_reset_password_form_class')()
     if form.validate_on_submit():
-        user = state.Model.query_by_email(form.email.data).first_or_404()
-        send_reset_password_token(user)
-        if msg:
-            flash(msg, "success")
-        if redirect_to:
-            return redirect(_make_redirect_url(redirect_to))
+        user = state.Model.query_by_email(form.email.data).first()
+        if user:
+            send_reset_password_token(user)
+            if success_msg:
+                flash(success_msg, "success")
+            if redirect_to:
+                return redirect(_make_redirect_url(redirect_to))
+        elif error_msg:
+            flash(error_msg, 'error')
 
     return render_template("users/send_reset_password.html", form=form)
 
