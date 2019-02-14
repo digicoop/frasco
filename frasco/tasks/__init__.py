@@ -22,7 +22,8 @@ class FrascoTasksState(ExtensionState):
             import_name = "%s.%s" % (func.__module__, func.__name__)
         try:
             logger.info("Scheduling task %s at %s" % (import_name, pattern))
-            return self.rq.get_scheduler().cron(pattern, func, id="cron-%s" % import_name.replace('.', '-'))
+            return self.rq.get_scheduler().cron(pattern, func, id="cron-%s" % import_name.replace('.', '-'),
+                timeout=self.options['scheduled_tasks_timeout'])
         except redis.exceptions.ConnectionError:
             logger.error("Cannot initialize scheduled tasks as no redis connection is available")
 
@@ -31,6 +32,7 @@ class FrascoTasks(Extension):
     name = 'frasco_tasks'
     state_class = FrascoTasksState
     prefix_extra_options = 'RQ_'
+    defaults = {"scheduled_tasks_timeout": 300}
 
     def _init_app(self, app, state):
         if not app.config.get('RQ_REDIS_URL') and has_extension('frasco_redis', app):
