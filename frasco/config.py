@@ -81,7 +81,7 @@ def load_config(app, config_filename='config.yml', env=None, deep_update=False):
     filename, ext = os.path.splitext(config_filename)
     env_filename = filename + "-" + env + ext
     if os.path.exists(env_filename):
-        logger.info('Loading config from %s' % config_filename)
+        logger.info('Loading config from %s' % env_filename)
         app.config.from_file(env_filename, deep_update=True)
 
 
