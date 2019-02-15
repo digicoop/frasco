@@ -68,7 +68,7 @@ class FrascoUpload(Extension):
         app.add_template_global(format_file_size)
 
         def send_uploaded_file(filename):
-            return send_from_directory(state.options["upload_dir"], filename)
+            return send_from_directory(os.path.abspath(state.options["upload_dir"]), filename)
         app.add_url_rule(state.options["upload_url"] + "/<path:filename>",
                          endpoint="static_upload",
                          view_func=send_uploaded_file)

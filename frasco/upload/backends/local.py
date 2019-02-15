@@ -6,9 +6,7 @@ import os
 
 class LocalStorageBackend(StorageBackend):
     def save(self, file, filename):
-        filename = safe_join(self.options["upload_dir"], filename)
-        if not os.path.isabs(filename):
-            filename = os.path.join(current_app.root_path, filename)
+        filename = safe_join(os.path.abspath(self.options["upload_dir"]), filename)
         dirname = os.path.dirname(filename)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
@@ -18,8 +16,6 @@ class LocalStorageBackend(StorageBackend):
         return url_for("static_upload", filename=filename, **kwargs)
 
     def delete(self, filename):
-        filename = safe_join(self.options["upload_dir"], filename)
-        if not os.path.isabs(filename):
-            filename = os.path.join(current_app.root_path, filename)
+        filename = safe_join(os.path.abspath(self.options["upload_dir"]), filename)
         if os.path.exists(filename):
             os.unlink(filename)
