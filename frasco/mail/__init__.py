@@ -50,6 +50,7 @@ class FrascoMail(Extension):
                 "inline_css": False,
                 "auto_render_missing_content_type": True,
                 "log_messages": None, # default is app.testing
+                "log_messages_on_failure": False, # default is app.testing
                 "dumped_messages_folder": "email_logs",
                 "localized_emails": None,
                 "default_locale": None,
@@ -97,6 +98,8 @@ def send_message(msg):
         if state.options["log_messages"] or current_app.testing or current_app.debug:
             log_message(msg, state.options['dumped_messages_folder'])
     except Exception as e:
+        if state.options["log_messages_on_failure"]:
+            log_message(msg, state.options['dumped_messages_folder'])
         if not state.options['silent_failures']:
             raise e
         current_app.log_exception(e)
@@ -112,7 +115,7 @@ def send_mail(to, template_filename, *args, **kwargs):
     force_sync = kwargs.pop('_force_sync', False)
     msg = create_message(to, template_filename, *args, **kwargs)
     if msg:
-        if has_extension('tasks') and state.options['send_async'] and not force_sync:
+        if has_extension('frasco_tasks') and state.options['send_async'] and not force_sync:
             send_message_async(msg)
         else:
             send_message(msg)
