@@ -4,6 +4,10 @@ from frasco.utils import deep_update_dict
 import os
 import yaml
 import errno
+import logging
+
+
+logger = logging.getLogger('frasco')
 
 
 class Config(FlaskConfig):
@@ -57,32 +61,36 @@ class Config(FlaskConfig):
                     self[key.upper()] = value
         return True
 
-    def from_file(self, filename, silent=False, deep_update=False):
+    def from_file(self, filename, **kwargs):
         if filename.endswith(".py"):
-            self.from_pyfile(filename, silent=silent)
-        elif filename.endswith(".js") or filename.endswith(".json"):
-            self.from_json(filename, silent=silent, deep_update=deep_update)
-        elif filename.endswith(".yml"):
-            self.from_yaml(filename, silent=silent, deep_update=deep_update)
-        else:
-            raise RuntimeError("Unknown config file extension")
-
-    def resolve_includes(self, relative_to=".", key="INCLUDE_FILES"):
-        for spec in self.pop(key, []):
-            if not isinstance(spec, dict):
-                spec = {"filename": spec}
-            filename = os.path.join(relative_to, spec["filename"])
-            self.from_file(filename, silent=spec.get("silent", False),
-                deep_update=spec.get("deep_update", False))
+            return self.from_pyfile(filename, **kwargs)
+        if filename.endswith(".js") or filename.endswith(".json"):
+            return self.from_json(filename, **kwargs)
+        if filename.endswith(".yml") or filename.endswith(".yaml"):
+            return self.from_yaml(filename, **kwargs)
+        raise RuntimeError("Unknown config file extension")
 
 
-def load_config(app, config_filename='config.yml', env=None, root_path=None):
-    if not root_path:
-        root_path = app.root_path
-    config_path = os.path.join(root_path, config_filename)
-    app.config.from_yaml(config_path, silent=True)
+def load_config(app, config_filename='config.yml', env=None, deep_update=False):
+    if os.path.exists(config_filename):
+        logger.info('Loading config from %s' % config_filename)
+        app.config.from_file(config_filename, deep_update=deep_update)
+    if env is False:
+        return
     env = env or app.config['ENV']
-    filename, ext = os.path.splitext(config_path)
+    filename, ext = os.path.splitext(config_filename)
     env_filename = filename + "-" + env + ext
-    app.config.from_yaml(env_filename, silent=True, deep_update=True)
-    app.config.resolve_includes(root_path)
+    if os.path.exists(env_filename):
+        logger.info('Loading config from %s' % config_filename)
+        app.config.from_file(env_filename, deep_update=True)
+
+
+def update_config_with_env_vars(app, prefix):
+    config = {}
+    prefix = prefix.upper()
+    for k, v in os.environ.iteritems():
+        if k.startswith(prefix + "_"):
+            config[k[len(prefix)+1:]] = v
+    if config:
+        logger.info('Using config from environment variables')
+        app.config.update(config)
