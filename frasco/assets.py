@@ -24,6 +24,8 @@ class FrascoAssets(Extension):
     prefix_extra_options = 'ASSETS_'
 
     def _init_app(self, app, state):
+        if app.debug:
+            app.config.setdefault('ASSETS_AUTO_BUILD', True)
         state.env = Environment(app)
         state.env.debug = app.debug
 
