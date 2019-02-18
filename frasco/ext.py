@@ -6,7 +6,7 @@ import inspect
 import logging
 
 
-__all__ = ('Extension', 'ExtensionState', 'ExtensionError', 'ext_stateful_method',
+__all__ = ('Extension', 'ExtensionState', 'ExtensionError', 'ext_stateful_method', 'pass_extension_state',
            'require_extension', 'has_extension', 'get_extension_state')
 
 
@@ -91,7 +91,7 @@ class Extension(object):
 def ext_stateful_method(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        app = kwargs.get('_app')
+        app = kwargs.pop('_app', None)
         if has_app_context() or self.app or app:
             return func(self, self.get_state(app), *args, **kwargs)
         self._wait_for_state_methods.append((func, args, kwargs))
@@ -112,6 +112,23 @@ def get_extension_state(ext_name, state=None, app=None, must_exist=True):
     if must_exist:
         assert ext_name in app.extensions, ("The current app does not have the extension '%s'" % ext_name)
     return app.extensions.get(ext_name)
+
+
+def pass_extension_state(ext_name=None):
+    def decorator(func):
+        spec = inspect.getargspec(func)
+        if spec.args and spec.args[0] == 'self':
+            def wrapper(self, *args, **kwargs):
+                app = kwargs.pop('_app', None)
+                if isinstance(self, Extension):
+                    return func(self, self.get_state(app), *args, **kwargs)
+                return func(self, get_extension_state(ext_name, app=app), *args, **kwargs)
+        else:
+            def wrapper(*args, **kwargs):
+                app = kwargs.pop('_app', None)
+                return func(get_extension_state(ext_name, app=app), *args, **kwargs)
+        return functools.wraps(func)(wrapper)
+    return decorator
 
 
 def require_extension(ext_name, app=None):
