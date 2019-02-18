@@ -82,7 +82,11 @@ def url_for_avatar(user):
         hash = hashlib.md5(username).hexdigest()
     email = getattr(user, state.options["gravatar_email_column"] or 'email', None)
     if email:
-        hash = hashlib.md5(email.lower()).hexdigest()
+        if isinstance(email, unicode):
+            email = email.lower().encode('utf-8')
+        else:
+            email = email.lower()
+        hash = hashlib.md5(email).hexdigest()
 
     if state.options["force_flavatar"] and (email or username):
         if state.options['add_flavatar_route']:
