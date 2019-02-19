@@ -4,6 +4,12 @@ import urlparse
 import uuid
 import json
 from itsdangerous import URLSafeTimedSerializer, BadSignature
+from eventlet import wsgi
+import eventlet
+
+
+eventlet.sleep()
+eventlet.monkey_patch()
 
 
 class PresenceRedisManager(socketio.RedisManager):
@@ -106,7 +112,7 @@ def create_app(redis_url='redis://', channel='socketio', secret=None, token_max_
     def get(sid, data):
         return mgr.get_member_info(data['sid'], default_ns)
 
-    return socketio.Middleware(sio)
+    return socketio.WSGIApp(sio)
 
 
 def _get_env_var(wsgi_env, name, default=None):
@@ -127,20 +133,16 @@ def cleanup_wsgi_app():
         _wsgi_app.engineio_app.manager.cleanup_presence_keys()
 
 
-def run_server(port=8888, **kwargs):
-    from eventlet import wsgi
-    import eventlet
-    eventlet.sleep()
-    eventlet.monkey_patch()
+def run_server(port=8888, debug=False, log_output=False, **kwargs):
     env = dict([("SIO_%s" % k.upper(), v) for k, v in kwargs.items()])
-    wsgi.server(eventlet.listen(('', port)), wsgi_app, environ=env)
+    wsgi.server(eventlet.listen(('', port)), wsgi_app, environ=env, debug=debug, log_output=debug or log_output)
     cleanup_wsgi_app()
 
 
 if __name__ == '__main__':
     import argparse
-    argparser = argparse.ArgumentParser(prog='tornadopush',
-        description='Start tornadopush server')
+    argparser = argparse.ArgumentParser(prog='frascopush',
+        description='Start frasco.push.server')
     argparser.add_argument('-p', '--port', default=8888, type=int,
         help='Port number')
     argparser.add_argument('-r', '--redis-url', default=os.environ.get('SIO_REDIS_URL', 'redis://'), type=str,
@@ -149,5 +151,8 @@ if __name__ == '__main__':
         help='Channel')
     argparser.add_argument('-s', '--secret', default=os.environ.get('SIO_SECRET'), type=str,
         help='Secret')
+    argparser.add_argument('--debug', action='store_true', help='Debug mode')
+    argparser.add_argument('--access-logs', action='store_true', help='Show access logs in console')
     args = argparser.parse_args()
-    run_server(args.port, redis_url=args.redis_url, channel=args.channel, secret=args.secret)
+    run_server(args.port, debug=args.debug, log_output=args.access_logs,
+        redis_url=args.redis_url, channel=args.channel, secret=args.secret)
