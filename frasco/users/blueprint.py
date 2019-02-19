@@ -30,6 +30,11 @@ def login():
     if is_user_logged_in():
         return redirect(redirect_url)
 
+    if state.options['login_redirect']:
+        return redirect(state.options['login_redirect'])
+    if state.manager.login_view != "users.login":
+        return redirect(url_for(state.manager.login_view))
+
     if not state.options['allow_login']:
         if state.options["login_disallowed_message"]:
             flash(state.options["login_disallowed_message"], "error")
@@ -76,6 +81,9 @@ def signup():
     redirect_url = request.args.get("next") or _make_redirect_url(state.options["redirect_after_signup"])
     if is_user_logged_in():
         return redirect(redirect_url)
+
+    if state.options['signup_redirect']:
+        return redirect(state.options['signup_redirect'])
         
     allow_signup = state.options["allow_signup"]
     if state.options["oauth_signup_only"] and "oauth_signup" not in session:
@@ -167,6 +175,16 @@ def oauth_signup():
 @users_blueprint.route('/login/reset-password', methods=['GET', 'POST'])
 def send_reset_password():
     state = get_extension_state('frasco_users')
+
+    if state.options['reset_password_redirect']:
+        return redirect(state.options['reset_password_redirect'])
+
+    if not state.options['allow_reset_password']:
+        if state.options["reset_password_disallowed_message"]:
+            flash(state.options["reset_password_disallowed_message"], "error")
+        return redirect(url_for(state.options.get("redirect_after_reset_password_disallowed") or\
+            "users.login", next=request.args.get("next")))
+
     success_msg = state.options["reset_password_token_success_message"]
     error_msg = state.options["reset_password_token_error_message"]
     redirect_to = state.options["redirect_after_reset_password_token"]
@@ -189,6 +207,13 @@ def send_reset_password():
 @users_blueprint.route('/login/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     state = get_extension_state('frasco_users')
+
+    if not state.options['allow_reset_password']:
+        if state.options["reset_password_disallowed_message"]:
+            flash(state.options["reset_password_disallowed_message"], "error")
+        return redirect(url_for(state.options.get("redirect_after_reset_password_disallowed") or\
+            "users.login", next=request.args.get("next")))
+
     msg = state.options["reset_password_success_message"]
     redirect_to = state.options["redirect_after_reset_password"]
 

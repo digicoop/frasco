@@ -7,7 +7,9 @@
   <{ form_field form.remember }/>
   <p class="button">
     <button type="submit">{{ _("Login") }}</button>
+    {% if app.extensions.frasco_users.options['allow_reset_password'] %}
     <a href="{{ url_for('users.send_reset_password') }}">{{ _("Password lost?") }}</a>
+    {% endif %}
   </p>
 </{}>
 {% for name, login_view in app.extensions.frasco_users.oauth_apps %}

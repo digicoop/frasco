@@ -48,12 +48,15 @@ class FrascoUsers(Extension):
         "expire_password_after": None,
         # login
         "allow_login": True,
+        "login_view": "users.login",
+        "login_redirect": None, # redirect to url instead of login page
         "login_form_class": LoginWithEmailForm,
         "allow_email_or_username_login": True,
         "remember_days": 365,
         "redirect_after_login": "index",
         "redirect_after_login_disallowed": None,
         # signup
+        "signup_redirect": None, # redirect to url instead of signup page
         "allow_signup": True,
         "signup_form_class": SignupForm,
         "send_welcome_email": False,
@@ -65,6 +68,8 @@ class FrascoUsers(Extension):
         "redirect_after_signup": "index",
         "redirect_after_signup_disallowed": None, # go to login
         # reset password
+        "reset_password_redirect": None, # redirect to url instead of reset password page
+        "allow_reset_password": True,
         "send_reset_password_form_class": SendResetPasswordForm,
         "reset_password_form_class": ResetPasswordForm,
         "send_reset_password_email": True,
@@ -72,6 +77,7 @@ class FrascoUsers(Extension):
         "login_user_on_reset_password": True,
         "redirect_after_reset_password_token": False,
         "redirect_after_reset_password": "index",
+        "redirect_after_reset_password_disallowed": "users.login",
         # logout
         "redirect_after_logout": "index",
         # oauth
@@ -105,6 +111,7 @@ class FrascoUsers(Extension):
         "reset_password_token_success_message": lazy_translate(u"An email has been sent to your email address with a link to reset your password"),
         "reset_password_error_message": lazy_translate(u"Invalid or expired link to reset your password"),
         "reset_password_success_message": lazy_translate(u"Password successfully resetted"),
+        "reset_password_disallowed_message": lazy_translate(u"You are not allowed to reset your password"),
         "update_password_error_message": lazy_translate(u"Invalid current password"),
         "update_user_email_error_message": lazy_translate(u"An account using the same email already exists"),
         "oauth_user_denied_login": lazy_translate("Login was denied"),
@@ -125,7 +132,7 @@ class FrascoUsers(Extension):
         app.jinja_env.add_extension(AnonymousOnlyExtension)
         
         state.manager.init_app(app)
-        state.manager.login_view = "users.login"
+        state.manager.login_view = state.options['login_view']
         state.manager.login_message_category = "error"
         populate_obj(state.manager, extract_unmatched_items(state.options, self.defaults))
 
