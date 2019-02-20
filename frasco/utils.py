@@ -1,7 +1,6 @@
 from werkzeug.utils import import_string as wz_import_string, cached_property
 from werkzeug.local import LocalProxy, LocalStack
-from flask import (url_for, Markup, json, request, _request_ctx_stack,\
-                   has_request_context, abort, current_app)
+from flask import Markup, json, request, _request_ctx_stack, has_request_context, abort, current_app
 import imp
 import functools
 import re
@@ -14,6 +13,7 @@ import subprocess
 import click
 import inspect
 import logging
+from .helpers import url_for
 
 
 def import_string(impstr, attr=None):

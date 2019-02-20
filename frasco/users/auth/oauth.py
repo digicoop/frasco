@@ -1,4 +1,5 @@
-from flask import request, url_for, flash, redirect, session, current_app, Blueprint
+from flask import request, flash, redirect, session, current_app, Blueprint
+from frasco.helpers import url_for
 from frasco.ext import get_extension_state
 from frasco.users.user import login_user, is_user_logged_in, current_user
 from frasco.models import db
@@ -115,7 +116,7 @@ def create_login_blueprint(name, authorize_handler):
     @login_blueprint.route('/login/%s' % name)
     def login():
         session['oauth_redirect_next'] = request.args.get('next')
-        callback_url = url_for('.callback', _external=True, _scheme=current_app.config['PREFERRED_URL_SCHEME'])
+        callback_url = url_for('.callback', _external=True)
         return getattr(oauth, name).authorize_redirect(callback_url)
 
     @login_blueprint.route('/login/%s/callback' % name)

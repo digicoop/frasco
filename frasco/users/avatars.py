@@ -1,6 +1,7 @@
 from frasco.ext import *
 from frasco.upload import url_for_upload
-from flask import current_app, url_for, request
+from frasco.helpers import url_for
+from flask import current_app, request
 import sqlalchemy as sqla
 import hashlib
 import urllib

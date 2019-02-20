@@ -1,5 +1,6 @@
-from flask import Blueprint, request, redirect, url_for, current_app, flash, session, render_template, abort
+from flask import Blueprint, request, redirect, current_app, flash, session, render_template, abort
 from flask_login import logout_user
+from frasco.helpers import url_for
 from frasco.ext import get_extension_state, has_extension
 from frasco.utils import populate_obj, AttrDict
 from frasco.models import db

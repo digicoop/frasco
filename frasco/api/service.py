@@ -1,4 +1,5 @@
-from flask import json, make_response, Blueprint, url_for, jsonify, g
+from flask import json, make_response, Blueprint, jsonify, g
+from frasco.helpers import url_for
 from frasco.utils import cached_property, join_url_rule
 from frasco.request_params import disable_request_params
 from frasco.marshaller import disable_marshaller
