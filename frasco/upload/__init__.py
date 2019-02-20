@@ -95,7 +95,7 @@ def upload_stream(stream, filename, target_filename=None, **kwargs):
 
 def upload_file(pathname, filename=None, **kwargs):
     with open(pathname, 'rb') as f:
-        upload_stream(f, filename or pathname, **kwargs)
+        return upload_stream(f, filename or pathname, **kwargs)
 
 
 def delete_uploaded_file(filename, backend=None, **kwargs):
