@@ -31,6 +31,7 @@ class MailProvider(object):
 
     @contextmanager
     def bulk_connection(self):
+        failed_establish = False
         try:
             conn = self.start_bulk_connection()
         except Exception as e:
@@ -39,10 +40,12 @@ class MailProvider(object):
             current_app.log_exception(e)
             logging.getLogger('frasco.mail').warning("Failed establishing bulk connection")
             conn = BulkConnection(self.send)
+            failed_establish = True
 
         bulk_connection_context.push(conn)
         try:
             yield conn
         finally:
-            self.stop_bulk_connection(conn)
+            if not failed_establish:
+                self.stop_bulk_connection(conn)
             bulk_connection_context.pop()
