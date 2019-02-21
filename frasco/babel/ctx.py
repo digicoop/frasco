@@ -51,6 +51,8 @@ def detect_locale():
     if has_request_context() and state.options["extract_locale_from_request"]:
         if state.options["request_arg"] in request.args:
             locale = request.args[state.options["request_arg"]]
+            if locale not in state.options["locales"]:
+                return
             if state.options["store_request_locale_in_session"]:
                 session["locale"] = locale
             return locale
