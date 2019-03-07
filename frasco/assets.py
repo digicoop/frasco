@@ -108,4 +108,6 @@ def copy_files_from_js_packages(files):
         if os.path.isdir(filename):
             shutil.copytree(filename, target)
         else:
+            if not os.path.exists(os.path.dirname(target)):
+                os.makedirs(os.path.dirname(target))
             shutil.copyfile(filename, target)
