@@ -1,10 +1,12 @@
 from frasco.ext import *
 from flask_assets import Environment, _webassets_cmd
-from flask import Blueprint
+from flask import Blueprint, current_app
 from flask.cli import with_appcontext, cli
 from flask.signals import Namespace as SignalNamespace
 import logging
 import click
+import os
+import shutil
 
 
 _signals = SignalNamespace()
@@ -22,6 +24,8 @@ class FrascoAssets(Extension):
     name = 'frasco_assets'
     state_class = FrascoAssetsState
     prefix_extra_options = 'ASSETS_'
+    defaults = {'js_packages_path': {},
+                'copy_files_from_js_packages': {}}
 
     def _init_app(self, app, state):
         if app.debug:
@@ -29,14 +33,21 @@ class FrascoAssets(Extension):
         state.env = Environment(app)
         state.env.debug = app.debug
 
+        if state.options['copy_files_from_js_packages']:
+            register_assets_builder(lambda: copy_files_from_js_packages(state.options['copy_files_from_js_packages']))
+
         @app.cli.command()
         @with_appcontext
         def build_all_assets():
             """Build assets from all extensions."""
+            if state.options['js_packages_path']:
+                register_js_packages_blueprint(app, state.options['js_packages_path'])
             before_build_assets.send()
             _webassets_cmd('build')
 
         if state.env.config["auto_build"]:
+            if state.options['js_packages_path']:
+                register_js_packages_blueprint(app, state.options['js_packages_path'])
             @app.before_first_request
             def before_request():
                 auto_build_assets.send(self)
@@ -64,3 +75,37 @@ def register_assets_builder(func=None):
     if func:
         return decorator(func)
     return decorator
+
+
+def register_js_packages_blueprint(app, js_packages_path):
+    for name, path in js_packages_path.items():
+        if name not in app.blueprints:
+            bp = Blueprint(name, __name__, static_folder=os.path.abspath(path), static_url_path='/static/%s' % name)
+            app.register_blueprint(bp)
+
+
+def copy_files_from_js_packages(files):
+    state = get_extension_state('frasco_assets')
+    packages = state.options['js_packages_path']
+    logger = logging.getLogger('frasco.assets')
+    for src, dest in files.items():
+        package, filename = src.split('/', 1)
+        filename = os.path.join(packages.get(package, current_app.root_path), filename)
+        if not os.path.exists(src):
+            logger.warning("Cannot copy file from js packages: %s" % src)
+            continue
+        target = os.path.join(current_app.static_folder, dest)
+        if os.path.isdir(filename) and os.path.exists(target):
+            if dest.endswith('/'):
+                target = os.path.join(target, os.path.basename(filename))
+            else:
+                logger.debug("Removing target of js package file copy: %s" % target)
+                if os.path.isdir(target):
+                    shutil.rmtree(target)
+                else:
+                    os.unlink(target)
+        logger.debug("Copying js package file from '%s' to '%s'" % (filename, target))
+        if os.path.isdir(filename):
+            shutil.copytree(filename, target)
+        else:
+            shutil.copyfile(filename, target)
