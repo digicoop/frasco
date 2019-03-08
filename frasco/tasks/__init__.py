@@ -2,6 +2,7 @@ from frasco.ext import *
 from frasco.utils import import_string
 from frasco.models import delayed_tx_calls
 from flask_rq2 import RQ
+from flask_rq2 import cli
 from rq import get_current_job
 from .job import FrascoJob
 import redis.exceptions
@@ -43,9 +44,6 @@ class FrascoTasks(Extension):
             app.config.setdefault('RQ_ASYNC', False)
         state.rq = RQ(app)
 
-        for import_name, pattern in state.options.get('schedule', {}).items():
-            state.schedule_task(pattern, import_name)
-
 
 def enqueue_task_now(func, *args, **kwargs):
     return enqueue_now(func, args=args, kwargs=kwargs)
@@ -76,3 +74,15 @@ def task(**options):
         setattr(func, 'enqueue_now', lambda *a, **kw: enqueue_now(func, args=a, kwargs=kw, **options))
         return func
     return wrapper
+
+
+_rq2_scheduler = cli.scheduler
+
+@functools.wraps(_rq2_scheduler)
+def _scheduler(*args, **kwargs):
+    state = get_extension_state('frasco_tasks')
+    for import_name, pattern in state.options.get('schedule', {}).items():
+        state.schedule_task(pattern, import_name)
+    _rq2_scheduler(*args, **kwargs)
+
+cli._commands['scheduler'] = _scheduler
