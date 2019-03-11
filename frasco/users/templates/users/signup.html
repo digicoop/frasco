@@ -7,7 +7,7 @@
   {% endif %}
 {% endblock %}
 {% block users_content %}
-<{ form_tag form }>
+<{ form_tag form id="signup-form" }>
   <{ form_field form.email }/>
   {% if must_provide_password %}
     <{ form_field form.password }/>
