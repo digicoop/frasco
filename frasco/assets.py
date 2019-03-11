@@ -29,7 +29,7 @@ class FrascoAssets(Extension):
 
     def _init_app(self, app, state):
         if app.debug:
-            app.config['ASSETS_AUTO_BUILD'] = True
+            app.config.setdefault('ASSETS_AUTO_BUILD', True)
         state.env = Environment(app)
         state.env.debug = app.debug
 
@@ -45,11 +45,12 @@ class FrascoAssets(Extension):
             before_build_assets.send()
             _webassets_cmd('build')
 
+        if state.options['js_packages_path'] and (state.env.config["auto_build"] or app.debug):
+            register_js_packages_blueprint(app, state.options['js_packages_path'])
+
         if state.env.config["auto_build"]:
-            if state.options['js_packages_path']:
-                register_js_packages_blueprint(app, state.options['js_packages_path'])
             @app.before_first_request
-            def before_request():
+            def before_first_request():
                 auto_build_assets.send(self)
 
     @ext_stateful_method
