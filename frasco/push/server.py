@@ -6,10 +6,14 @@ import json
 from itsdangerous import URLSafeTimedSerializer, BadSignature
 from eventlet import wsgi
 import eventlet
+import logging
 
 
 eventlet.sleep()
 eventlet.monkey_patch()
+
+
+logger = logging.getLogger('frasco.push.server')
 
 
 class PresenceRedisManager(socketio.RedisManager):
@@ -80,7 +84,9 @@ def create_app(redis_url='redis://', channel='socketio', secret=None, token_max_
             env['allowed_rooms'] = allowed_rooms
             if user_info:
                 mgr.set_member_info(sid, default_ns, user_info)
-        except BadSignature as e:
+            logger.debug('New client connection: %s ; %s' % (sid, user_info))
+        except BadSignature:
+            logger.debug('Client provided an invalid token')
             return False
 
     @sio.on('members')
@@ -92,21 +98,26 @@ def create_app(redis_url='redis://', channel='socketio', secret=None, token_max_
     @sio.on('join')
     def join(sid, data):
         if sio.environ[sid].get('allowed_rooms') and data['room'] not in sio.environ[sid]['allowed_rooms']:
+            logger.debug('Client %s is not allowed to join room %s' % (sid, data['room']))
             return False
         sio.enter_room(sid, data['room'])
+        logger.debug('Client %s has joined room %s' % (sid, data['room']))
         return get_room_members(sid, data)
 
     @sio.on('broadcast')
     def room_broadcast(sid, data):
+        logger.debug('Client %s broadcasting %s to room %s' % (sid, data['event'], data['room']))
         sio.emit("%s:%s" % (data['room'], data['event']), data.get('data'), room=data['room'], skip_sid=sid)
 
     @sio.on('leave')
     def leave(sid, data):
         sio.leave_room(sid, data['room'])
+        logger.debug('Client %s has left room %s' % (sid, data['room']))
 
     @sio.on('set')
     def set(sid, data):
         mgr.set_member_info(sid, default_ns, data)
+        logger.debug('Client %s has updated its user info: %s' % (sid, data))
 
     @sio.on('get')
     def get(sid, data):
@@ -134,6 +145,10 @@ def cleanup_wsgi_app():
 
 
 def run_server(port=8888, debug=False, log_output=False, **kwargs):
+    logger.addHandler(logging.StreamHandler())
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logger.debug('Push server running in DEBUG')
     env = dict([("SIO_%s" % k.upper(), v) for k, v in kwargs.items()])
     wsgi.server(eventlet.listen(('', port)), wsgi_app, environ=env, debug=debug, log_output=debug or log_output)
     cleanup_wsgi_app()
