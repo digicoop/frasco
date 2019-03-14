@@ -1,4 +1,4 @@
-from flask import current_app
+from flask import current_app, abort
 from frasco.utils import unknown_value
 from sqlalchemy.ext.mutable import Mutable
 from flask_sqlalchemy import Pagination
@@ -84,3 +84,23 @@ def ensure_session_flushed(func):
         db.session.flush()
         return func(*args, **kwargs)
     return wrapper
+
+
+def model_loader(model, nullable=False, *options, **options_kwargs):
+    """Model loader of request params"""
+    def loader(id):
+        if id is None:
+            if not nullable:
+                abort(404)
+            return None
+        q = model.query
+        for opt in options:
+            q = q.options(opt)
+        for item in options_kwargs.pop('joinedload', []):
+            q = q.options(db.joinedload(item))
+        for item in options_kwargs.pop('undefer', []):
+            q = q.options(db.undefer_group(item))
+        for method, value in options_kwargs.items():
+            q = q.options(getattr(db, method)(value))
+        return q.get_or_404(id)
+    return loader

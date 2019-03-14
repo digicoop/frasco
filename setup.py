@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='1.2.9',
+    version='1.2.10',
     url='http://github.com/digicoop/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -60,7 +60,8 @@ setup(
         'eventlet',
         'authlib',
         'stripe',
-        'suds'
+        'suds',
+        'python-dateutil'
     ],
     entry_points='''
         [console_scripts]

@@ -2,6 +2,7 @@ from flask import Response, abort
 from .ctx import ContextStack, FlagContextStack
 from .utils import AttrDict
 import functools
+import inspect
 
 
 try:
@@ -18,10 +19,13 @@ marshalling_context = marshalling_context_stack.make_proxy()
 
 def marshal(rv, marshaller, func=None, args=None, kwargs=None, **marshaller_kwargs):
     with marshalling_context_stack(AttrDict(func=func, args=args, kwargs=kwargs, marshaller_kwargs=marshaller_kwargs)):
-        if marshmallow_available and issubclass(marshaller, MarshmallowSchema):
-            schema = marshaller(**marshaller_kwargs)
-            return schema.dump(rv).data
-        elif hasattr(marshaller, '__marshaller__'):
+        if marshmallow_available:
+            if inspect.isclass(marshaller) and issubclass(marshaller, MarshmallowSchema):
+                schema = marshaller(**marshaller_kwargs)
+                return schema.dump(rv)
+            elif isinstance(marshaller, MarshmallowSchema):
+                return marshaller.dump(rv, **marshaller_kwargs)
+        if hasattr(marshaller, '__marshaller__'):
             marshaller = marshaller.__marshaller__
         return marshaller(rv, **marshaller_kwargs)
 

@@ -52,7 +52,7 @@ def build_spec_params(rule, endpoint, func, options):
                     loc = "formData"
                 o = {"name": pname,
                         "type": convert_type_to_spec(p.type),
-                        "required": p.required,
+                        "required": bool(p.required),
                         "in": loc}
                 if p.help:
                     o['description'] = p.help
