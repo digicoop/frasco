@@ -13,6 +13,7 @@ class LocalStorageBackend(StorageBackend):
         file.save(filename)
 
     def url_for(self, filename, **kwargs):
+        kwargs.setdefault('_external', True)
         return url_for("static_upload", filename=filename, **kwargs)
 
     def delete(self, filename):
