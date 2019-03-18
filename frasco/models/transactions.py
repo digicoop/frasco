@@ -9,7 +9,7 @@ import logging
 __all__ = ('transaction', 'as_transaction', 'is_transaction', 'delayed_tx_calls')
 
 
-_transaction_ctx = ContextStack()
+_transaction_ctx = ContextStack(default_item=True)
 delayed_tx_calls = DelayedCallsContext()
 logger = logging.getLogger('frasco.models')
 
