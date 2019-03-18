@@ -7,6 +7,7 @@ import datetime
 import hashlib
 import uuid
 import functools
+import psycopg2
 from .service import ApiAuthentificationRequiredError
 
 
@@ -33,9 +34,12 @@ class FrascoApiKeyAuthentification(Extension):
             try:
                 header_val = base64.b64decode(header_val)
                 key_value = header_val.split(':')[0]
-            except Exception:
+            except:
                 return
-            key = state.Model.query.filter_by(value=key_value).first()
+            try:
+                key = state.Model.query.filter_by(value=key_value).first()
+            except psycopg2.DataError:
+                return
             if key:
                 now = datetime.datetime.utcnow()
                 if key.expires_at and key.expires_at < now:
