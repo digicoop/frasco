@@ -70,9 +70,10 @@ def render_message(template_filename, vars=None, auto_render_missing_content_typ
     source, frontmatter_source = remove_yaml_frontmatter(source, True)
     frontmatter = None
     if frontmatter_source:
-        frontmatter = yaml.safe_load(state.jinja_env.from_string(re.sub("^---\n", "", frontmatter_source)).render(**vars))
+        frontmatter = yaml.safe_load(re.sub("^---\n", "", frontmatter_source))
         if frontmatter:
-            vars = dict(frontmatter, **vars)
+            for k, v in frontmatter.items():
+                vars.setdefault(k, state.jinja_env.from_string(v).render(**vars))
 
     filename, ext = os.path.splitext(template_filename)
     templates = [("%s.%s" % (filename, e), e) for e in ext[1:].split(",")]
