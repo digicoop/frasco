@@ -53,6 +53,22 @@ class ApiService(object):
             return func
         return decorator
 
+    def GET(self, *args, **kwargs):
+        kwargs['methods'] = ['GET']
+        return self.route(*args, **kwargs)
+
+    def POST(self, *args, **kwargs):
+        kwargs['methods'] = ['POST']
+        return self.route(*args, **kwargs)
+
+    def PUT(self, *args, **kwargs):
+        kwargs['methods'] = ['PUT']
+        return self.route(*args, **kwargs)
+
+    def DELETE(self, *args, **kwargs):
+        kwargs['methods'] = ['DELETE']
+        return self.route(*args, **kwargs)
+
     def __getattr__(self, name):
         if name not in self.endpoint_funcs:
             raise ValueError("Endpoint '%s' does not exist in service '%s'" % (name, self.name))
