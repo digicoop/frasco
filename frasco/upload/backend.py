@@ -1,3 +1,6 @@
+from contextlib import contextmanager
+import requests
+import tempfile
 
 
 def split_backend_from_filename(filename):
@@ -22,3 +25,15 @@ class StorageBackend(object):
     def delete(self, filename):
         raise NotImplementedError()
 
+    def open(self, filename):
+        raise NotImplementedError()
+
+
+class RemoteOpenStorageBackendMixin(object):
+    @contextmanager
+    def open(self, filename):
+        with tempfile.TemporaryFile() as f:
+            r = requests.get(self.url_for(filename))
+            f.write(r.content)
+            f.seek(0)
+            yield f

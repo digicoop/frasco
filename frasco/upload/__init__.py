@@ -108,3 +108,9 @@ def url_for_upload(filename, backend=None, **kwargs):
     if not backend:
         backend, filename = split_backend_from_filename(filename)
     return get_extension_state('frasco_upload').get_backend(backend).url_for(filename, **kwargs)
+
+
+def open_uploaded_file(filename, backend=None, **kwargs):
+    if not backend:
+        backend, filename = split_backend_from_filename(filename)
+    return get_extension_state('frasco_upload').get_backend(backend).open(filename, **kwargs)

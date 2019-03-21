@@ -1,6 +1,6 @@
-from frasco.upload.backend import StorageBackend
+from frasco.upload.backend import StorageBackend, RemoteOpenStorageBackendMixin
 
 
-class HttpsStorageBackend(StorageBackend):
+class HttpsStorageBackend(RemoteOpenStorageBackendMixin, StorageBackend):
     def url_for(self, filename, **kwargs):
         return 'https://' + filename
