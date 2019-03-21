@@ -80,7 +80,7 @@ class FrascoMail(Extension):
                 state.options['localized_emails'] = '{locale}/{filename}'
 
 
-def send_message(msg):
+def send_message_sync(msg):
     state = get_extension_state('frasco_mail')
 
     if state.options['suppress_send']:
@@ -107,7 +107,15 @@ def send_message(msg):
 
 def send_message_async(msg):
     require_extension('frasco_tasks')
-    enqueue_task(send_message, msg=msg)
+    enqueue_task(send_message_sync, msg=msg)
+
+
+def send_message(msg):
+    state = get_extension_state('frasco_mail')
+    if has_extension('frasco_tasks') and state.options['send_async']:
+        send_message_async(msg)
+    else:
+        send_message_sync(msg)
 
 
 def send_mail(to, template_filename, *args, **kwargs):
@@ -115,11 +123,10 @@ def send_mail(to, template_filename, *args, **kwargs):
     force_sync = kwargs.pop('_force_sync', False)
     msg = create_message(to, template_filename, *args, **kwargs)
     if msg:
-        if has_extension('frasco_tasks') and state.options['send_async'] and not force_sync:
-            send_message_async(msg)
+        if force_sync:
+            send_message_sync(msg)
         else:
             send_message(msg)
-
 
 @contextmanager
 def bulk_mail_connection():

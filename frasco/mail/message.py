@@ -136,14 +136,14 @@ def create_message(to, tpl, **kwargs):
 
 
 def log_message(message, dump_dir=None):
-    logging.getLogger('frasco.mail').info("Email %s sent to %s as \"%s\"" % (message.template, message.recipients, message.subject))
+    logging.getLogger('frasco.mail').info("Email %s sent to %s as \"%s\"" % (getattr(message, 'template', '[no template]'), message.recipients, message.subject))
     if dump_dir:
         if not os.path.exists(dump_dir):
             os.mkdir(dump_dir, 0777)
         filename = os.path.join(dump_dir, "-".join([
             datetime.datetime.now().isoformat("-"),
-            os.path.splitext(message.template)[0].replace("/", "_"),
-            "-".join(message.recipients)]))
+            os.path.splitext(getattr(message, 'template', ''))[0].replace("/", "_"),
+                "-".join(message.recipients)]))
         if message.body:
             with open(filename + ".txt", "w") as f:
                 f.write(message.body.encode('utf-8'))
