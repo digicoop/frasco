@@ -71,8 +71,8 @@ def get_request_param_value(name, location=None, aslist=False, request_data=None
 
 class RequestParam(object):
     def __init__(self, name, type=None, nullable=False, required=False, loader=None, validator=None,
-                 dest=None, location=None, aslist=False, aslist_iter_loader=True, help=None,
-                 default=unknown_value, **loader_kwargs):
+                 dest=None, location=None, aslist=False, aslist_iter_coerce=True, aslist_iter_loader=True,
+                 help=None, default=unknown_value, **loader_kwargs):
         self.name = name
         self.type = type
         self.nullable = nullable
@@ -83,6 +83,7 @@ class RequestParam(object):
         self.dest = dest
         self.location = location
         self.aslist = aslist
+        self.aslist_iter_coerce = aslist_iter_coerce
         self.aslist_iter_loader = aslist_iter_loader
         self.help = help
         self.default = default
@@ -149,7 +150,7 @@ class RequestParam(object):
             if value is None and not self.nullable:
                 raise MissingRequestParam()
             if type and value is not None:
-                if self.aslist:
+                if self.aslist and self.aslist_iter_coerce:
                     value = map(lambda v: self.coerce(v, type), value)
                 else:
                     value = self.coerce(value, type)
@@ -292,7 +293,9 @@ def list_of(type, **kwargs):
         if not isinstance(value, (list, tuple)):
             abort(400, "not a list")
         return [coerce_obj(item) for item in value]
-    return dict(type=coerce, **kwargs) if kwargs else coerce
+    kwargs['aslist'] = True
+    kwargs['aslist_iter_coerce'] = False
+    return dict(type=coerce, **kwargs)
 
 
 def utcdate(**kwargs):
