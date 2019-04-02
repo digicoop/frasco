@@ -27,18 +27,24 @@ class FrascoApiKeyAuthentification(Extension):
 
         @app.extensions.frasco_users.manager.request_loader
         def load_user_from_request(request):
-            api_key = request.headers.get('Authorization')
+            api_key = None
+            if 'Authorization' in request.headers:
+                authz = request.headers['Authorization']
+                if authz.startswith('Basic '):
+                    try:
+                        api_key = base64.b64decode(authz[6:]).split(':')[0]
+                    except:
+                        return
+                elif authz.startswith('Bearer '):
+                    api_key = authz[7:]
+            elif 'X-Api-Key' in request.headers:
+                api_key = request.headers['X-Api-Key']
             if not api_key:
                 return
-            header_val = api_key.replace('Basic ', '', 1)
+
             try:
-                header_val = base64.b64decode(header_val)
-                key_value = header_val.split(':')[0]
+                key = state.Model.query.filter_by(value=api_key).first()
             except:
-                return
-            try:
-                key = state.Model.query.filter_by(value=key_value).first()
-            except psycopg2.DataError:
                 return
             if key:
                 now = datetime.datetime.utcnow()

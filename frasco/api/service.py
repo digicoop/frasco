@@ -111,17 +111,18 @@ class ApiVersion(ApiService):
         api.services.update(parent_api.services)
         return api
 
-    def __init__(self, version, import_name, url_prefix=None):
+    def __init__(self, version, import_name, url_prefix=None, spec_builder=None):
         if url_prefix is None:
             url_prefix = '/api/%s' % version
         super(ApiVersion, self).__init__('', url_prefix)
         self.version = version
         self.import_name = import_name
         self.services = {}
+        self.spec_builder = spec_builder or build_swagger_spec
 
-    def build_apispec(self, refresh=False):
+    def build_apispec(self, refresh=False, **kwargs):
         if 'apispec' not in self.__dict__ or refresh:
-            self.__dict__['apispec'] = build_swagger_spec(self).to_dict()
+            self.__dict__['apispec'] = self.spec_builder(self, **kwargs).to_dict()
         return self.__dict__['apispec']
 
     def add_service(self, service):
@@ -155,7 +156,9 @@ class ApiVersion(ApiService):
         for rule, endpoint, options in rules:
             yield rule, endpoint, endpoint_funcs[endpoint], options
 
-    def as_blueprint(self, name=None, client_var_name="API", client_class_name="SwaggerClient"):
+    def as_blueprint(self, name=None, client_var_name="API", client_class_name="SwaggerClient", spec_builder_options=None):
+        if not spec_builder_options:
+            spec_builder_options = {}
         if not name:
             name = "api_%s" % self.version.replace('.', '_')
         bp = self.blueprint_class(name, self.import_name, url_prefix=self.url_prefix)
@@ -177,11 +180,11 @@ class ApiVersion(ApiService):
 
         @bp.route('/spec.json')
         def get_spec():
-            return jsonify(**self.build_apispec())
+            return jsonify(**self.build_apispec(**spec_builder_options))
 
         @bp.route("/client.js")
         def get_client():
-            return build_swagger_client(self.build_apispec(), url_for('.get_spec', _external=True),
-                client_var_name, client_class_name)
+            return build_swagger_client(self.build_apispec(**spec_builder_options),
+                url_for('.get_spec', _external=True), client_var_name, client_class_name)
 
         return bp
