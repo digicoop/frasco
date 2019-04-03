@@ -105,7 +105,9 @@ def signup_user(email_or_user, password=None, provider=None, flash_messages=True
         user = email_or_user
     else:
         user = state.Model()
-        user.email = email_or_user
+        user.email = email_or_user.strip().lower()
+    if 'email' in kwargs:
+        user.email = kwargs.pop('email').strip().lower()
     populate_obj(user, kwargs)
 
     user.signup_provider = provider or state.options['default_auth_provider_name']

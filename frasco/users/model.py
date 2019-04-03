@@ -28,7 +28,7 @@ class UserModelMixin(UserMixin):
 
     @classmethod
     def query_by_email(cls, email):
-        return cls.query.filter(cls.email == email.lower())
+        return cls.query.filter(cls.email == email.strip().lower())
 
     @classmethod
     def query_by_identifier(cls, identifier):
@@ -44,7 +44,8 @@ class UserWithUsernameModelMixin(UserModelMixin):
 
     @classmethod
     def query_by_username_or_email(cls, identifier):
-        return cls.query.filter(db.or_(db.func.lower(cls.username) == identifier.strip().lower(), cls.email == identifier.strip().lower()))
+        return cls.query.filter(db.or_(db.func.lower(cls.username) == identifier.strip().lower(),
+            cls.email == identifier.strip().lower()))
 
     @classmethod
     def query_by_identifier(cls, identifier):

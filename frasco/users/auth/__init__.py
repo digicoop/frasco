@@ -26,7 +26,8 @@ def authenticate(identifier, password):
 
     if not state.options["disable_password_authentication"]:
         if state.options['allow_email_or_username_login'] and hasattr(state.Model, 'username'):
-            q = state.Model.query.filter(db.or_(state.Model.username == identifier, state.Model.email == identifier))
+            q = state.Model.query.filter(db.or_(db.func.lower(state.Model.username) == identifier.strip().lower(),
+                state.Model.email == identifier.strip().lower()))
         else:
             q = state.Model.query_by_identifier(identifier)
         user = q.first()

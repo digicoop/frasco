@@ -91,7 +91,8 @@ def update_password(user, password, skip_validation=False, **kwargs):
         user.last_password_change_from = request.remote_addr
     user.must_reset_password_at_login = False
     password_updated.send(user=user)
-    logger.info('Password changed for user #%s' % user.id)
+    if user.id:
+        logger.info('Password changed for user #%s' % user.id)
     return True
 
 
