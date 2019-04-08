@@ -23,7 +23,7 @@ class S3StorageBackend(RemoteOpenStorageBackendMixin, StorageBackend):
     def save(self, file, filename, force_sync=False):
         kwargs = dict(filename=filename, content_disposition_filename=file.filename,
             bucket=self.options.get('bucket'), acl=self.options['acl'],
-            prefix=self.options['filename_prefix'])
+            prefix=self.options['filename_prefix'], backend=self.name)
 
         if not force_sync and self.options.get('async') and has_extension('frasco_tasks'):
             tmpname = save_uploaded_file_temporarly(file, filename)
@@ -35,7 +35,7 @@ class S3StorageBackend(RemoteOpenStorageBackendMixin, StorageBackend):
     def url_for(self, filename, **kwargs):
         bucket = self.options.get('bucket')
         if self.options['signed_url']:
-            bucket = get_s3_connection().get_bucket(bucket)
+            bucket = get_s3_bucket(bucket, self.name)
             bucket_key = bucket.get_key(filename)
             kwargs.setdefault('expires_in', self.options['s3_urls_ttl'])
             return bucket_key.generate_url(**kwargs)
@@ -43,20 +43,20 @@ class S3StorageBackend(RemoteOpenStorageBackendMixin, StorageBackend):
 
     def delete(self, filename, force_sync=False):
         if not force_sync and self.options['async'] and has_extension('frasco_tasks'):
-            enqueue_task('delete_s3_file', filename=filename)
+            enqueue_task('delete_s3_file', filename=filename, backend=self.name)
         else:
-            delete_s3_file(filename)
+            delete_s3_file(filename, backend=self.name)
 
 
-def get_s3_options():
-    return get_extension_state('frasco_upload').get_backend('s3').options
+def get_s3_options(backend=None):
+    return get_extension_state('frasco_upload').get_backend(backend or 's3').options
 
 
-def get_s3_connection(use_cached=True):
+def get_s3_connection(use_cached=True, backend=None):
     if use_cached and "boto_s3_connection" in g:
         return g.boto_s3_connection
     
-    options = get_s3_options()
+    options = get_s3_options(backend)
     kwargs = {'aws_access_key_id': options.get('access_key'),
               'aws_secret_access_key': options.get('secret_key')}
 
@@ -78,19 +78,23 @@ def get_s3_connection(use_cached=True):
     return conn
 
 
-def get_s3_bucket(bucket=None):
-    options = get_s3_options()
+def get_s3_bucket(bucket=None, backend=None):
+    options = get_s3_options(backend)
     if not bucket:
         assert 'bucket' in options, "Missing bucket option"
         bucket = options['bucket']
-    return get_s3_connection().get_bucket(bucket)
+    try:
+        return get_s3_connection(backend=backend).get_bucket(bucket)
+    except Exception as e:
+        current_app.logger.debug(e.body)
+        raise
 
 
 def upload_file_to_s3(stream_or_filename, filename, bucket=None, prefix=None,
                       acl=None, mimetype=None, charset=None, delete_source=False,
-                      content_disposition_filename=None):
-    options = get_s3_options()
-    bucket = get_s3_bucket(bucket)
+                      content_disposition_filename=None, backend=None):
+    options = get_s3_options(backend)
+    bucket = get_s3_bucket(bucket, backend)
     prefix = prefix or options['filename_prefix']
     bucket_key = bucket.new_key(prefix + filename)
     acl = acl or options['acl']
@@ -114,8 +118,8 @@ def upload_file_to_s3(stream_or_filename, filename, bucket=None, prefix=None,
         os.unlink(stream_or_filename)
 
 
-def delete_s3_file(filename, bucket=None, prefix=None):
-    options = get_s3_options()
-    bucket = get_s3_bucket(bucket)
+def delete_s3_file(filename, bucket=None, prefix=None, backend=None):
+    options = get_s3_options(backend)
+    bucket = get_s3_bucket(bucket, backend)
     prefix = prefix or options['filename_prefix']
     bucket.delete_key(prefix + filename)

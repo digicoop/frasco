@@ -12,7 +12,8 @@ def split_backend_from_filename(filename):
 class StorageBackend(object):
     default_options = None
 
-    def __init__(self, options):
+    def __init__(self, name, options):
+        self.name = name
         self.options = dict(self.default_options or {})
         self.options.update(options)
 

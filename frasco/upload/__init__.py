@@ -31,11 +31,15 @@ class FrascoUploadState(ExtensionState):
 
     def _get_backend_options(self, name):
         options = dict(self.options)
+        options.pop('backends', None)
         options.pop('backend', None) # make sure this key does not exists
+        backend = name
         if name in self.options['backends']:
             if 'backend' in self.options['backends'][name]:
                 options = self._get_backend_options(self.options['backends'][name]['backend'])
+                backend = options['backend'] # make sure to keep the deepest level backend to resolve aliases properly
             options.update(self.options['backends'][name])
+        options['backend'] = backend
         return options
 
     def get_backend(self, name=None):
@@ -45,8 +49,8 @@ class FrascoUploadState(ExtensionState):
             name = self.options['default_backend']
         if name not in self.backends:
             options = self._get_backend_options(name)
-            backend_class = import_class(options.get('backend', name), StorageBackend, "frasco.upload.backends")
-            self.backends[name] = backend_class(options)
+            backend_class = import_class(options['backend'], StorageBackend, "frasco.upload.backends")
+            self.backends[name] = backend_class(name, options)
         return self.backends[name]
 
 
