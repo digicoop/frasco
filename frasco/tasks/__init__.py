@@ -73,8 +73,8 @@ def get_enqueued_job(id):
 def task(**options):
     def wrapper(func):
         func.__task_options__ = options
-        setattr(func, 'enqueue', functools.partial(enqueue, func))
-        setattr(func, 'enqueue_now', functools.partial(enqueue_now, func))
+        setattr(func, 'enqueue', functools.partial(enqueue_task, func))
+        setattr(func, 'enqueue_now', functools.partial(enqueue_task_now, func))
         return func
     return wrapper
 
