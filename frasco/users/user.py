@@ -120,7 +120,7 @@ def signup_user(email_or_user, password=None, provider=None, flash_messages=True
             except:
                 pass
 
-    validate_user(user, flash_messages=flash_messages)
+    validate_user(user, flash_messages=flash_messages, is_signup=True)
     if password:
         update_password(user, password, flash_messages=flash_messages)
 

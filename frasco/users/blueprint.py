@@ -14,7 +14,7 @@ from .forms import *
 from .auth import authenticate
 from .auth.oauth import clear_oauth_signup_session
 from .signals import user_signed_up
-from .user import is_user_logged_in, validate_user, login_user, signup_user, UserValidationFailedError, check_rate_limit
+from .user import is_user_logged_in, login_user, signup_user, UserValidationFailedError, check_rate_limit
 from .password import generate_reset_password_token, update_password, validate_password, send_reset_password_token, PasswordValidationFailedError
 from .tokens import read_user_token
 
