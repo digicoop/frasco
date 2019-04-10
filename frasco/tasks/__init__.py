@@ -50,6 +50,8 @@ def enqueue_task_now(func, *args, **kwargs):
 
 
 def enqueue_now(func, **options):
+    if getattr(func, '__task_options__', None):
+        options.update(func.__task_options__)
     queue_name = options.pop('queue', None)
     return get_extension_state('frasco_tasks').rq.get_queue(queue_name).enqueue_call(func, **options)
 
@@ -70,8 +72,9 @@ def get_enqueued_job(id):
 
 def task(**options):
     def wrapper(func):
-        setattr(func, 'enqueue', lambda *a, **kw: enqueue(func, args=a, kwargs=kw, **options))
-        setattr(func, 'enqueue_now', lambda *a, **kw: enqueue_now(func, args=a, kwargs=kw, **options))
+        func.__task_options__ = options
+        setattr(func, 'enqueue', functools.partial(enqueue, func))
+        setattr(func, 'enqueue_now', functools.partial(enqueue_now, func))
         return func
     return wrapper
 
