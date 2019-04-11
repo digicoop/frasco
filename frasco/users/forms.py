@@ -5,7 +5,7 @@ from frasco.i18n import lazy_translate
 
 
 __all__ = ('LoginWithEmailForm', 'LoginWithUsernameForm', 'LoginWithIdentifierForm',
-           'SignupForm', 'SignupWithUsernameForm', 'SignupFormWithTOSMixin',
+           'Login2FAForm', 'SignupForm', 'SignupWithUsernameForm', 'SignupFormWithTOSMixin',
            'SendResetPasswordForm', 'ResetPasswordForm')
 
 
@@ -24,6 +24,11 @@ class LoginWithUsernameForm(BaseLoginForm):
 
 class LoginWithIdentifierForm(BaseLoginForm):
     identifier = StringField(lazy_translate('Username or email'), validators=[validators.input_required()])
+
+
+class Login2FAForm(FlaskForm):
+    code = StringField(lazy_translate('Two factor authentification code'), validators=[validators.input_required()])
+    remember = BooleanField(lazy_translate("Dont't ask again on this computer"))
     
 
 class SignupForm(FlaskForm):

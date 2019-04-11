@@ -4,6 +4,7 @@ from flask_bcrypt import Bcrypt
 import datetime
 import re
 import logging
+import uuid
 
 from .tokens import generate_user_token, read_user_token
 from .signals import reset_password_sent, password_updated
@@ -17,11 +18,20 @@ bcrypt = Bcrypt()
 logger = logging.getLogger('frasco.users')
 
 
+def generate_random_password():
+    return str(uuid.uuid4()).replace('-', '')
+
+
 def hash_password(password):
     return bcrypt.generate_password_hash(password)
 
 
 def check_password(user, password):
+    state = get_extension_state('frasco_users')
+    if state.options['enable_2fa'] and user.two_factor_auth_enabled and bcrypt.check_password_hash(user.otp_recovery_code, password):
+        from .otp import disable_2fa
+        disable_2fa(user)
+        return True
     return user.password and bcrypt.check_password_hash(user.password, password)
 
 

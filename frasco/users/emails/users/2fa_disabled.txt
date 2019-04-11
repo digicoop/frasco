@@ -1,0 +1,4 @@
+---
+subject: Two Factor Authentification is disabled
+---
+You have disabled two factor authentification on your account

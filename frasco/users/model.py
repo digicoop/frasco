@@ -1,12 +1,15 @@
 from frasco.models import db, transaction
 from frasco.models.utils import MutableList
+from frasco import current_app
+from frasco.ext import get_extension_state
 from frasco.redis import redis
 from flask_login import UserMixin
 from sqlalchemy.dialects import postgresql
 import datetime
 
 
-__all__ = ('UserModelMixin', 'UserWithUsernameModelMixin', 'UserLastAccessAtModelMixin', 'UserLoginModelMixin')
+__all__ = ('UserModelMixin', 'UserWithUsernameModelMixin', 'UserLastAccessAtModelMixin',
+           'UserOTPCodeMixin', 'UserLoginModelMixin')
 
 
 class UserModelMixin(UserMixin):
@@ -64,6 +67,12 @@ class UserLastAccessAtModelMixin(object):
                 self.last_access_at = datetime.date.today()
             redis.setbit(today_key, self.id, 1)
             redis.expire(today_key, 86500)
+
+
+class UserOTPCodeMixin(object):
+    two_factor_auth_enabled = db.Column(db.Boolean, default=False)
+    otp_code = db.Column(db.String, unique=True)
+    otp_recovery_code = db.Column(db.String)
 
 
 class UserLoginModelMixin(object):

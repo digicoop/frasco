@@ -48,13 +48,18 @@ class FrascoUsers(Extension):
         "expire_password_after": None,
         # login
         "allow_login": True,
+        "enable_2fa": False,
         "login_view": "users.login",
         "login_redirect": None, # redirect to url instead of login page
         "login_form_class": LoginWithEmailForm,
+        "login_2fa_form_class": Login2FAForm,
         "allow_email_or_username_login": True,
         "remember_days": 365,
         "redirect_after_login": "index",
         "redirect_after_login_disallowed": None,
+        "2fa_issuer_name": None, # default is app.config['TITLE']
+        "2fa_remember_days": 60,
+        "2fa_remember_cookie_options": {},
         # signup
         "signup_redirect": None, # redirect to url instead of signup page
         "allow_signup": True,
@@ -91,6 +96,7 @@ class FrascoUsers(Extension):
         # messages
         "login_error_message": lazy_translate(u"Invalid email or password"),
         "login_disallowed_message": None,
+        "login_2fa_error_message": lazy_translate(u"Invalid two factor authentification code"),
         "login_required_message": lazy_translate(u"Please log in to access this page"),
         "fresh_login_required_message": lazy_translate(u"Please reauthenticate to access this page"),
         "password_expired_message": lazy_translate(u"Your password has expired, please enter a new one"),

@@ -1,0 +1,8 @@
+---
+subject: Two Factor Authentification has been activated
+---
+Two Factor Authentification is now enabled on your account.
+
+Please note down this one-time use recovery password in case your device is lost:
+
+{{recovery_code}}

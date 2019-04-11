@@ -1,0 +1,11 @@
+{% extends "users/layout.html" %}
+{% block users_title %}{{ _('Verify your account') }}{% endblock %}
+{% block users_content %}
+<{ form_tag form id="login-form" }>
+  <{ form_field form.code }/>
+  <{ form_field form.remember }/>
+  <p class="button">
+    <button type="submit">{{ _("Login") }}</button>
+  </p>
+</{}>
+{% endblock %}
