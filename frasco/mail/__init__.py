@@ -1,6 +1,7 @@
 from flask import g, current_app
 from flask.signals import Namespace
 from frasco.ext import *
+from frasco.models import delayed_tx_calls
 from frasco.tasks import enqueue_task
 from frasco.templating.extensions import RemoveYamlFrontMatterExtension
 from frasco.utils import extract_unmatched_items
@@ -80,6 +81,7 @@ class FrascoMail(Extension):
                 state.options['localized_emails'] = '{locale}/{filename}'
 
 
+@delayed_tx_calls.proxy
 def send_message_sync(msg):
     state = get_extension_state('frasco_mail')
 
@@ -105,6 +107,7 @@ def send_message_sync(msg):
         current_app.log_exception(e)
 
 
+@delayed_tx_calls.proxy
 def send_message_async(msg):
     require_extension('frasco_tasks')
     enqueue_task(send_message_sync, msg=msg)

@@ -94,6 +94,7 @@ class DelayedCallsContext(ContextStack):
         @functools.wraps(func)
         def proxy(*args, **kwargs):
             return self.call(func, args, kwargs)
+        proxy.call_now = func
         return proxy
 
 
