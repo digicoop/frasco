@@ -4,6 +4,7 @@ from sqlalchemy.ext.mutable import Mutable
 from flask_sqlalchemy import Pagination
 import uuid
 import functools
+import sqlalchemy
 from .ext import db
 
 
@@ -104,3 +105,31 @@ def model_loader(model, nullable=False, *options, **options_kwargs):
             q = q.options(getattr(db, method)(value))
         return q.get_or_404(id)
     return loader
+
+
+def extract_model_attr_to_col_mapping(model):
+    mapper = sqlalchemy.inspect(model)
+    mapping = {}
+    for attr in mapper.column_attrs:
+        if not isinstance(attr.expression, sqlalchemy.sql.schema.Column):
+            continue
+        mapping[attr.key] = attr.expression.name
+    return mapping
+
+
+def model_obj_to_dict(obj, value_serializer=None):
+    row = {}
+    for attr, col in extract_model_attr_to_col_mapping(obj.__class__).iteritems():
+        row[col] = (value_serializer or (lambda a: a))(getattr(obj, attr))
+    return row
+
+
+def get_model_class(name):
+    if name in db.Model._decl_class_registry:
+        return db.Model._decl_class_registry[name]
+
+
+def get_model_class_from_table(name):
+    for model in db.Model._decl_class_registry:
+        if model.__table__.name == name:
+            return model
