@@ -13,29 +13,40 @@ class DatabaseDictSerializer(object):
     remap_only_tables = None
     ignore_tables = None
 
-    def dump(self, obj, data=None, many=False, value_serializer=None):
-        if data is None:
-            data = {}
+    def __init__(self, keep_existing_fks=False):
+        self.keep_existing_fks = keep_existing_fks
+
+    def dump(self, obj, data=None, many=False, ignore_tables=None, follow_rels=True):
+        data = {} if data is None else data
+        ignore_tables = ignore_tables or []
         if obj is None:
             return data
         if many or isinstance(obj, list):
             for o in obj:
-                self.dump(o, data)
+                self.dump(o, data, False, ignore_tables, follow_rels)
             return data
-        row = obj.__export_to_dict__(data) if hasattr(obj, '__export_to_dict__') else model_obj_to_dict(obj, value_serializer=value_serializer)
+        if obj.__table__.name in ignore_tables:
+            return data
+        row = obj.__export_to_dict__(data) if hasattr(obj, '__export_to_dict__') else model_obj_to_dict(obj, value_serializer=self._dump_value)
         if row:
             data.setdefault(obj.__table__.name, []).append(row)
-        if hasattr(obj, '__export_follow_rels__'):
+        if follow_rels and (isinstance(follow_rels, (list, tuple)) or hasattr(obj, '__export_follow_rels__')):
             mapper = sqlalchemy.inspect(obj.__class__)
-            for relattr in obj.__export_follow_rels__:
-                attr = getattr(mapper.attrs, relattr)
-                if attr.secondary is not None:
+            for relattr in (follow_rels if isinstance(follow_rels, (list, tuple)) else obj.__export_follow_rels__):
+                rel_follow_rels = True
+                if isinstance(relattr, tuple):
+                    relattr, rel_follow_rels = relattr
+                attr = getattr(mapper.attrs, relattr, None)
+                if attr and attr.secondary is not None:
                     data.setdefault(attr.secondary.name, [])
                     for r in db.session.query(attr.secondary).filter(attr.synchronize_pairs[0][1] == getattr(obj, attr.synchronize_pairs[0][0].name)):
                         data[attr.secondary.name].append({c.name: unicode(getattr(r, c.name)) for c in attr.secondary.columns})
-                else:
-                    self.dump(getattr(obj, relattr), data, many=attr.uselist)
+                elif not attr or attr.target.name not in ignore_tables:
+                    self.dump(getattr(obj, relattr), data, attr.uselist if attr else True, ignore_tables, rel_follow_rels)
         return data
+
+    def _dump_value(self, value):
+        return value
 
     def load(self, data, idmap=None):
         idmap = idmap or {}
@@ -131,7 +142,7 @@ class DatabaseDictSerializer(object):
             if col not in row or not row[col]:
                 continue
             target = list(table.c[col].foreign_keys)[0].column.table
-            data[col] = idmap.get(target.name, {}).get(int(row[col]))
+            data[col] = idmap.get(target.name, {}).get(int(row[col]), int(row[col]) if self.keep_existing_fks else None)
 
         data = self._validate_data(table, data)
         if not data:
