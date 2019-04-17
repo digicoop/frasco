@@ -32,10 +32,11 @@ def login():
     if is_user_logged_in():
         return redirect(redirect_url)
 
-    if state.options['login_redirect']:
-        return redirect(state.options['login_redirect'])
-    if state.manager.login_view != "users.login":
-        return redirect(url_for(state.manager.login_view))
+    if not request.args.get("no_redirect"):
+        if state.options['login_redirect']:
+            return redirect(state.options['login_redirect'])
+        if state.manager.login_view != "users.login":
+            return redirect(url_for(state.manager.login_view))
 
     if not state.options['allow_login']:
         if state.options["login_disallowed_message"]:
