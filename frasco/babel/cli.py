@@ -7,7 +7,7 @@ import tempfile
 import os
 import re
 
-from .extract import edit_pofile, create_babel_mapping, exec_babel_extract, po_to_json
+from .extract import edit_pofile, merge_pofile, create_babel_mapping, exec_babel_extract, po_to_json
 from .signals import *
 
 
@@ -21,7 +21,7 @@ def _extract():
         os.mkdir(path)
     potfile = os.path.join(path, "messages.pot")
 
-    click.echo("Extracting translatable strings from %s" % path)
+    click.echo("Extracting translatable strings from %s" % current_app.root_path)
     mapping = create_babel_mapping(state.options["extract_jinja_dirs"],
         state.options["extract_with_jinja_exts"], state.options["extractors"])
     exec_babel_extract(current_app.root_path, potfile, mapping)
@@ -34,7 +34,8 @@ def _extract():
         mapping = create_babel_mapping(jinja_dirs, jinja_exts, extractors)
         path_potfile = tempfile.NamedTemporaryFile(delete=False)
         path_potfile.close()
-        exec_babel_extract(potfile, path_potfile.name, mapping)
+        exec_babel_extract(path, path_potfile.name, mapping)
+        merge_pofile(potfile, path_potfile.name)
         os.unlink(path_potfile.name)
 
     translation_extracted.send()
