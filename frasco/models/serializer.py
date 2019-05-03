@@ -13,6 +13,13 @@ class DatabaseDictSerializer(object):
     remap_only_tables = None
     ignore_tables = None
 
+    @classmethod
+    def merge_idmaps(cls, idmap1, *idmaps):
+        for idmap in idmaps:
+            for table, rows in idmap1.iteritems():
+                rows.extend(idmap.get(table, []))
+        return idmap1
+
     def __init__(self, keep_existing_fks=False):
         self.keep_existing_fks = keep_existing_fks
 
@@ -45,6 +52,14 @@ class DatabaseDictSerializer(object):
                     self.dump(getattr(obj, relattr), data, attr.uselist if attr else True, ignore_tables, rel_follow_rels)
         return data
 
+    def dump_many(self, objs, data=None, **kwargs):
+        kwargs['many'] = True
+        return self.dump(objs, data, **kwargs)
+
+    def dump_obj(self, obj):
+        data = self.dump(obj, follow_rels=False)
+        return data[obj.__table__.name][0]
+
     def _dump_value(self, value):
         return value
 
@@ -58,7 +73,7 @@ class DatabaseDictSerializer(object):
 
         for table in tables_need_remap:
             for row in data.get(table.name, []):
-                self._remap(table, row, idmap)
+                self.remap(table, row, idmap)
 
         return idmap
 
@@ -127,12 +142,16 @@ class DatabaseDictSerializer(object):
             logger.debug('insert(%s, %s -> %s, %s)' % (table.name, row['id'], newid, data))
             return newid
 
-    def _remap(self, table, row, idmap):
+    def remap(self, table, row, idmap):
+        if isinstance(table, (str, unicode)):
+            table = self._get_table(table)
         fks = self._get_foreign_cols(table)
         alread_inserted = 'id' in row and int(row['id']) in idmap.get(table.name, {})
 
         if alread_inserted:
             # when data are already inserted, we are just remapping the foreign keys
+            if not fks:
+                return
             data = {}
         else:
             data = self._process_data(table, row, idmap,
@@ -142,7 +161,7 @@ class DatabaseDictSerializer(object):
             if col not in row or not row[col]:
                 continue
             target = list(table.c[col].foreign_keys)[0].column.table
-            data[col] = idmap.get(target.name, {}).get(int(row[col]), int(row[col]) if self.keep_existing_fks else None)
+            data[col] = self._mapid(idmap, target.name, int(row[col]))
 
         data = self._validate_data(table, data)
         if not data:
@@ -159,3 +178,6 @@ class DatabaseDictSerializer(object):
             else:
                 logger.debug('remap_insert(%s, %s)' % (table.name, data))
                 db.session.execute(table.insert(), data)
+
+    def _mapid(self, idmap, tablename, id):
+        return idmap.get(tablename, {}).get(id, id if self.keep_existing_fks else None)
