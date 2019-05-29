@@ -122,7 +122,11 @@ def create_login_blueprint(name, authorize_handler):
     @login_blueprint.route('/login/%s/callback' % name)
     def callback():
         redirect_url = session.pop('oauth_redirect_next', None)
-        token = getattr(oauth, name).authorize_access_token()
+        try:
+            token = getattr(oauth, name).authorize_access_token()
+        except Exception as e:
+            current_app.log_exception(e)
+            token = None
         if token is None:
             flash(current_app.extensions.frasco_users.options["oauth_user_denied_login"], "error")
             return redirect(url_for("users.login"))
