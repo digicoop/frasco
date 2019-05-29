@@ -63,7 +63,7 @@ def create_api_key(user=None, expires_at=None):
             seconds=state.options['default_key_duration'])
     key = state.Model()
     key.user = get_current_user(user)
-    key.value = hashlib.sha1(str(uuid.uuid4)).hexdigest()
+    key.value = hashlib.sha1(str(uuid.uuid4())).hexdigest()
     key.expires_at = expires_at
     return key
 
