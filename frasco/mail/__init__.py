@@ -4,7 +4,7 @@ from frasco.ext import *
 from frasco.models import delayed_tx_calls
 from frasco.tasks import enqueue_task
 from frasco.templating.extensions import RemoveYamlFrontMatterExtension
-from frasco.utils import extract_unmatched_items
+from frasco.utils import extract_unmatched_items, import_class, AttrDict
 from flask_mail import Mail
 from jinja_macro_tags import MacroLoader, MacroRegistry
 from jinja2 import ChoiceLoader, FileSystemLoader, PackageLoader
@@ -27,6 +27,7 @@ class FrascoMailError(Exception):
 class FrascoMailState(ExtensionState):
     def __init__(self, *args):
         super(FrascoMailState, self).__init__(*args)
+        self.connections = AttrDict()
         self.template_loaders = []
         layout_loader = PackageLoader(__name__, "templates")
         self.jinja_loader = MacroLoader(ChoiceLoader([ChoiceLoader(self.template_loaders), layout_loader]))
@@ -46,6 +47,7 @@ class FrascoMail(Extension):
     state_class = FrascoMailState
     prefix_extra_options = "MAIL_"
     defaults = {"provider": "smtp",
+                "connections": {},
                 "default_layout": "layout.html",
                 "default_template_vars": {},
                 "inline_css": False,
@@ -63,8 +65,13 @@ class FrascoMail(Extension):
     def _init_app(self, app, state):
         state.mail = Mail(app)
 
-        provider_class = state.import_option_as_class('provider', MailProvider, "frasco.mail.providers")
-        state.provider = provider_class(app, state, extract_unmatched_items(state.options, self.defaults or {}))
+        connections = dict(state.options['connections'])
+        if "default" not in connections:
+            connections["default"] = dict(extract_unmatched_items(state.options, self.defaults or {}),
+                provider=state.require_option('provider'))
+        for provider, provider_opts in connections.items():
+            provider_class = import_class(provider_opts.get('provider', 'smtp'), MailProvider, "frasco.mail.providers")
+            state.connections[provider] = provider_class(app, state, provider_opts)
 
         state.add_template_folder(os.path.join(app.root_path, "emails"))
         state.jinja_env = app.jinja_env.overlay(loader=state.jinja_loader)
@@ -82,7 +89,7 @@ class FrascoMail(Extension):
 
 
 @delayed_tx_calls.proxy
-def send_message_sync(msg):
+def send_message_sync(msg, connection="default"):
     state = get_extension_state('frasco_mail')
 
     if state.options['suppress_send']:
@@ -95,7 +102,7 @@ def send_message_sync(msg):
         if bulk_connection_context.top:
             bulk_connection_context.top.send(msg)
         else:
-            state.provider.send(msg)
+            state.connections[connection].send(msg)
         email_sent.send(msg)
         if state.options["log_messages"] or current_app.testing or current_app.debug:
             log_message(msg, state.options['dumped_messages_folder'])
@@ -108,31 +115,32 @@ def send_message_sync(msg):
 
 
 @delayed_tx_calls.proxy
-def send_message_async(msg):
+def send_message_async(msg, connection="default"):
     require_extension('frasco_tasks')
-    enqueue_task(send_message_sync, msg=msg)
+    enqueue_task(send_message_sync, msg=msg, connection=connection)
 
 
-def send_message(msg):
+def send_message(msg, connection="default"):
     state = get_extension_state('frasco_mail')
     if has_extension('frasco_tasks') and state.options['send_async']:
-        send_message_async(msg)
+        send_message_async(msg, connection)
     else:
-        send_message_sync(msg)
+        send_message_sync(msg, connection)
 
 
 def send_mail(to, template_filename, *args, **kwargs):
     state = get_extension_state('frasco_mail')
     force_sync = kwargs.pop('_force_sync', False)
+    connection = kwargs.pop('_connection', 'default')
     msg = create_message(to, template_filename, *args, **kwargs)
     if msg:
         if force_sync:
-            send_message_sync(msg)
+            send_message_sync(msg, connection)
         else:
-            send_message(msg)
+            send_message(msg, connection)
 
 @contextmanager
-def bulk_mail_connection():
+def bulk_mail_connection(connection="default"):
     state = get_extension_state('frasco_mail')
-    with state.provider.bulk_connection():
+    with state.connections[connection].bulk_connection():
         yield
