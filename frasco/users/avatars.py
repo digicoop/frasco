@@ -1,6 +1,7 @@
 from frasco.ext import *
 from frasco.upload import url_for_upload
 from frasco.helpers import url_for
+from frasco.utils import slugify
 from flask import current_app, request
 import sqlalchemy as sqla
 import hashlib
@@ -80,6 +81,7 @@ def url_for_avatar(user):
             username = username.lower().encode('utf-8')
         else:
             username = username.lower()
+        username = slugify(username)
         hash = hashlib.md5(username).hexdigest()
     email = getattr(user, state.options["gravatar_email_column"] or 'email', None)
     if email:
