@@ -13,25 +13,8 @@ import logging
 logger = logging.getLogger('frasco.tasks')
 
 
-class FrascoTasksState(ExtensionState):
-    def schedule_task(self, pattern, import_name_or_func):
-        if isinstance(import_name_or_func, str):
-            func = import_string(import_name_or_func)
-            import_name = import_name_or_func
-        else:
-            func = import_name_or_func
-            import_name = "%s.%s" % (func.__module__, func.__name__)
-        try:
-            logger.info("Scheduling task %s at %s" % (import_name, pattern))
-            return self.rq.get_scheduler().cron(pattern, func, id="cron-%s" % import_name.replace('.', '-'),
-                timeout=self.options['scheduled_tasks_timeout'])
-        except redis.exceptions.ConnectionError:
-            logger.error("Cannot initialize scheduled tasks as no redis connection is available")
-
-
 class FrascoTasks(Extension):
     name = 'frasco_tasks'
-    state_class = FrascoTasksState
     prefix_extra_options = 'RQ_'
     defaults = {"scheduled_tasks_timeout": 300}
 
@@ -79,13 +62,37 @@ def task(**options):
     return wrapper
 
 
+def schedule_task(pattern, import_name_or_func):
+    state = get_extension_state('frasco_tasks')
+    if isinstance(import_name_or_func, str):
+        func = import_string(import_name_or_func)
+        import_name = import_name_or_func
+    else:
+        func = import_name_or_func
+        import_name = "%s.%s" % (func.__module__, func.__name__)
+    try:
+        logger.info("Scheduling task %s at %s" % (import_name, pattern))
+        return state.rq.get_scheduler().cron(pattern, func,
+            id="cron-%s" % import_name.replace('.', '-'),
+            timeout=state.options['scheduled_tasks_timeout'])
+    except redis.exceptions.ConnectionError:
+        logger.error("Cannot initialize scheduled tasks as no redis connection is available")
+
+
+def clear_all_scheduled_tasks():
+    scheduler = get_extension_state('frasco_tasks').rq.get_scheduler()
+    for job in scheduler.get_jobs():
+        scheduler.cancel(job)
+
+
 _rq2_scheduler = cli.scheduler
 
 @functools.wraps(_rq2_scheduler)
 def _scheduler(*args, **kwargs):
     state = get_extension_state('frasco_tasks')
+    clear_all_scheduled_tasks()
     for import_name, pattern in state.options.get('schedule', {}).items():
-        state.schedule_task(pattern, import_name)
+        schedule_task(pattern, import_name)
     _rq2_scheduler(*args, **kwargs)
 
 cli._commands['scheduler'] = _scheduler
