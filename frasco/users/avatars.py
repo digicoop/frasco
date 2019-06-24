@@ -49,8 +49,11 @@ class FrascoUsersAvatars(Extension):
         def flavatar(name, bgcolorstr=None):
             if bgcolorstr is None:
                 bgcolorstr = request.args.get('bgcolorstr')
-            return generate_first_letter_avatar_svg(
-                name, bgcolorstr, request.args.get('size')), 200, {'Content-Type': 'image/svg+xml'}
+            svg = generate_first_letter_avatar_svg(name, bgcolorstr, request.args.get('size'))
+            return svg, 200, {
+                'Content-Type': 'image/svg+xml',
+                'Cache-Control', 'public, max-age=31536000'
+            }
 
         @app.route('/avatar/<hash>/<name>')
         def avatar(hash, name):
