@@ -52,7 +52,7 @@ class FrascoUsersAvatars(Extension):
             svg = generate_first_letter_avatar_svg(name, bgcolorstr, request.args.get('size'))
             return svg, 200, {
                 'Content-Type': 'image/svg+xml',
-                'Cache-Control', 'public, max-age=31536000'
+                'Cache-Control': 'public, max-age=31536000'
             }
 
         @app.route('/avatar/<hash>/<name>')
