@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='1.4.5',
+    version='1.4.6',
     url='http://github.com/digicoop/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -63,7 +63,8 @@ setup(
         'suds',
         'python-dateutil',
         'pyotp',
-        'werkzeug>=0.15'
+        'werkzeug>=0.15',
+        'glob2'
     ],
     entry_points='''
         [console_scripts]
