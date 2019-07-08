@@ -17,7 +17,10 @@ class StringFileStorage(FileStorage):
     def __init__(self, data, filename, mimetype=None, **kwargs):
         super(StringFileStorage, self).__init__(StringIO(data), filename, **kwargs)
         if mimetype is None:
-            mimetype = mimetypes.guess_type(filename)[0]
+            try:
+                mimetype = mimetypes.guess_type(filename)[0]
+            except:
+                pass
         self._mimetype = mimetype
 
     @property
