@@ -26,7 +26,7 @@ class PartialObject(object):
         if name in self._cached_attrs:
             del self._cached_attrs[name]
         setattr(self._load(), name, value)
-        
+
 
 class RedisObject(object):
     def __init__(self, key, serializer=None, coerce=None, redis=None):
@@ -129,7 +129,7 @@ class RedisList(RedisObject):
         pipe.execute()
 
     def remove(self, value):
-        self.redis.lrem(self.key, self._to_redis(value))
+        self.redis.lrem(self.key, 1, self._to_redis(value))
 
 
 class JSONRedisList(RedisList):
