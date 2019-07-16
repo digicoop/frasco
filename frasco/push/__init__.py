@@ -67,7 +67,8 @@ class FrascoPush(Extension):
 
         @app.cli.command('push-server')
         @click.option('--access-logs', is_flag=True)
-        def cli_command(access_logs=False):
+        def cli_server(access_logs=False):
+            """Start the push server"""
             args = list(state.server_cli)
             if access_logs:
                 args.append("--access-logs")
@@ -76,7 +77,8 @@ class FrascoPush(Extension):
             sys.exit(process.returncode)
 
         @app.cli.command('push-server-cli')
-        def cli_command():
+        def cli_print_cmd():
+            """Print the command line to start the push server independently from the app"""
             click.echo(" ".join(state.server_cli))
 
         @app.before_request
