@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='1.5.0',
+    version='1.5.1',
     url='http://github.com/digicoop/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -13,6 +13,8 @@ setup(
     package_data={
         'frasco': [
             'angular/static/*.js',
+            'assets/*.js',
+            'assets/*.html',
             'billing/invoicing/emails/*.html',
             'mail/templates/*.html',
             'mail/templates/layouts/*',
