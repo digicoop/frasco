@@ -30,6 +30,7 @@ class FrascoAssets(Extension):
     def _init_app(self, app, state):
         state.env = Environment(app)
         state.env.debug = app.debug
+        app.jinja_env.macros.register_file(os.path.join(os.path.dirname(__file__), "macros.html"), alias="frasco_assets.html")
 
         if state.options['copy_files_from_js_packages']:
             register_assets_builder(lambda: copy_files_from_js_packages(state.options['copy_files_from_js_packages']))

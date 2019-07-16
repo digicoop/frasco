@@ -1,0 +1,32 @@
+
+{% macro asset_tags(js_assets, css_assets) -%}
+    {% for asset in CSS_ASSETS %}
+        {% if asset.startswith('@') %}
+            {% assets asset[1:] %}
+                <link rel="stylesheet" type="text/css" href="{{ ASSET_URL }}">
+            {% endassets %}
+        {% else %}
+            <link rel="stylesheet" type="text/css" href="{{ asset }}">
+        {% endif %}
+    {% endfor %}
+    {% for asset in JS_ASSETS %}
+        {% if asset.startswith('@') %}
+            {% assets asset[1:] %}
+                <script type="text/javascript" src="{{ ASSET_URL }}"></script>
+            {% endassets %}
+        {% else %}
+            <script type="text/javascript" src="{{ asset }}"></script>
+        {% endif %}
+    {% endfor %}
+{%- endmacro %}
+
+
+{% macro cache_service_worker() -%}
+    {% if not app.config.get('DISABLE_CACHE_SERVICE_WORKER', False) and not app.debug %}
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register("{{ app.config.get('CACHE_SERVICE_WORKER_URL', '/cache-sw.js') }}");
+        }
+    </script>
+    {% endif %}
+{%- endmacro %}
