@@ -16,7 +16,8 @@ logger = logging.getLogger('frasco.tasks')
 class FrascoTasks(Extension):
     name = 'frasco_tasks'
     prefix_extra_options = 'RQ_'
-    defaults = {"scheduled_tasks_timeout": 300}
+    defaults = {"tasks_timeout": RQ.default_timeout,
+                "scheduled_tasks_timeout": 300}
 
     def _init_app(self, app, state):
         if not app.config.get('RQ_REDIS_URL') and has_extension('frasco_redis', app):
@@ -25,7 +26,7 @@ class FrascoTasks(Extension):
         app.config.setdefault('RQ_JOB_CLASS', 'frasco.tasks.job.FrascoJob')
         if app.testing:
             app.config.setdefault('RQ_ASYNC', False)
-        state.rq = RQ(app)
+        state.rq = RQ(app, default_timeout=state.options['tasks_timeout'])
 
 
 def enqueue_task_now(func, *args, **kwargs):
