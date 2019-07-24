@@ -3,6 +3,7 @@ from frasco.ext import *
 from frasco.users import is_user_logged_in, current_user
 from frasco.models import delayed_tx_calls
 from frasco.ctx import ContextStack
+from frasco.assets import expose_package
 from itsdangerous import URLSafeTimedSerializer
 from redis import StrictRedis
 import hashlib
@@ -38,6 +39,8 @@ class FrascoPush(Extension):
                 "default_current_user_loader": True}
 
     def _init_app(self, app, state):
+        expose_package(app, "frasco_push", __name__)
+        
         if state.options['secret'] is None:
             state.options["secret"] = app.config['SECRET_KEY']
         
@@ -85,9 +88,7 @@ class FrascoPush(Extension):
         def before_request():
             if state.options['secret']:
                 user_id, user_info, allowed_rooms = state.current_user_loader()
-                g.socketio_token = create_push_token(user_info, allowed_rooms)
-                if user_id:
-                    g.socketio_user_event = get_user_push_event_name(user_id)
+                g.socketio_token = create_push_token(user_info, get_user_room_name(user_id), allowed_rooms)
 
     @ext_stateful_method
     def current_user_loader(self, state, func):
@@ -111,16 +112,16 @@ def default_current_user_loader():
     return current_user.get_id(), info, allowed_rooms
 
 
-def create_push_token(user_info=None, allowed_rooms=None):
-    return get_extension_state('frasco_push').token_serializer.dumps([user_info, allowed_rooms])
+def create_push_token(user_info=None, user_room=None, allowed_rooms=None):
+    return get_extension_state('frasco_push').token_serializer.dumps([user_info, user_room, allowed_rooms])
 
 
 @delayed_tx_calls.proxy
-def emit_push_event(event, data=None, skip_self=None, room=None, namespace=None):
+def emit_push_event(event, data=None, skip_self=None, room=None, namespace=None, prefix_event_with_room=True):
     if suppress_push_events.top:
         return
     state = get_extension_state('frasco_push')
-    if state.options['prefix_event_with_room'] and room:
+    if state.options['prefix_event_with_room'] and prefix_event_with_room and room:
         event = "%s:%s" % (room, event)
     if skip_self is None:
         skip_self = not dont_skip_self_push_events.top
@@ -128,14 +129,16 @@ def emit_push_event(event, data=None, skip_self=None, room=None, namespace=None)
     if skip_self and has_request_context() and 'x-socketio-sid' in request.headers:
         skip_sid = request.headers['x-socketio-sid']
     logger.debug("Push event '%s' to {namespace=%s, room=%s, skip_sid=%s}: %s" % (event, namespace, room, skip_sid, data))
+    # we are publishing the events ourselves rather than using socketio.RedisManager because
+    # importing socketio while using flask debugger causes an error due to signals
     return state.redis.publish(state.options['channel'], format_emit_data(event, data, namespace, room, skip_sid))
 
 
-def emit_user_push_event(user_id, data=None, **kwargs):
-    return emit_push_event(get_user_push_event_name(user_id), data=data, **kwargs)
+def emit_user_push_event(user_id, event, data=None, **kwargs):
+    return emit_push_event(event, data, room=get_user_room_name(user_id), prefix_event_with_room=False, **kwargs)
 
 
-def get_user_push_event_name(user_id):
+def get_user_room_name(user_id):
     state = get_extension_state('frasco_push')
     if not state.options['secret']:
         raise Exception('A secret must be set to use emit_direct()')

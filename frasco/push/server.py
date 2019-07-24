@@ -1,4 +1,5 @@
 import socketio
+from socketio.exceptions import ConnectionRefusedError
 import os
 import urlparse
 import uuid
@@ -16,24 +17,26 @@ eventlet.monkey_patch()
 logger = logging.getLogger('frasco.push.server')
 
 
-class PresenceRedisManager(socketio.RedisManager):
+class PresenceEnabledRedisManager(socketio.RedisManager):
     def __init__(self, *args, **kwargs):
-        self.presence_session_id = kwargs.pop('presence_session_id', str(uuid.uuid4()).split('-')[-1])
+        self.presence_session_id = kwargs.pop('presence_session_id', None) or ''
         self.presence_key_prefix = "presence%s:" % self.presence_session_id
-        super(PresenceRedisManager, self).__init__(*args, **kwargs)
+        super(PresenceEnabledRedisManager, self).__init__(*args, **kwargs)
 
-    def enter_room(self, sid, namespace, room):
-        super(PresenceRedisManager, self).enter_room(sid, namespace, room)
-        if room and room != sid:
+    def _emit_joined(self, room, sid, info):
+        self.server.emit('%s:joined' % room, {"sid": sid, "info": info}, room=room, skip_sid=sid)
+
+    def enter_room(self, sid, namespace, room, skip_presence=False):
+        super(PresenceEnabledRedisManager, self).enter_room(sid, namespace, room)
+        if room and room != sid and not skip_presence:
             self.redis.sadd("%s%s:%s" % (self.presence_key_prefix, namespace, room), sid)
-            self.server.emit('%s:joined' % room, {"sid": sid, "info": self.get_member_info(sid, namespace)},
-                room=room, skip_sid=sid)
+            self._emit_joined(room, sid, self.get_member_info(sid, namespace))
 
     def leave_room(self, sid, namespace, room):
-        super(PresenceRedisManager, self).leave_room(sid, namespace, room)
+        super(PresenceEnabledRedisManager, self).leave_room(sid, namespace, room)
         if room and room != sid:
-            self.redis.srem("%s%s:%s" % (self.presence_key_prefix, namespace, room), sid)
-            self.server.emit('%s:left' % room, sid, room=room, skip_sid=sid)
+            if self.redis.srem("%s%s:%s" % (self.presence_key_prefix, namespace, room), sid):
+                self.server.emit('%s:left' % room, sid, room=room, skip_sid=sid)
 
     def get_room_members(self, namespace, room):
         return self.redis.smembers("%s%s:%s" % (self.presence_key_prefix, namespace, room))
@@ -41,9 +44,8 @@ class PresenceRedisManager(socketio.RedisManager):
     def set_member_info(self, sid, namespace, info):
         self.redis.set("%s%s@%s" % (self.presence_key_prefix, namespace, sid), json.dumps(info))
         for room in self.get_rooms(sid, namespace):
-            if not room or room == sid:
-                continue
-            self.server.emit('%s:member_updated' % room, {"sid": sid, "info": info}, room=room, skip_sid=sid)
+            if room != sid:
+                self._emit_joined(room, sid, info)
 
     def get_member_info(self, sid, namespace):
         data = self.redis.get("%s%s@%s" % (self.presence_key_prefix, namespace, sid))
@@ -55,7 +57,7 @@ class PresenceRedisManager(socketio.RedisManager):
         return {}
 
     def disconnect(self, sid, namespace):
-        super(PresenceRedisManager, self).disconnect(sid, namespace)
+        super(PresenceEnabledRedisManager, self).disconnect(sid, namespace)
         self.redis.delete("%s%s@%s" % (self.presence_key_prefix, namespace, sid))
 
     def cleanup_presence_keys(self):
@@ -66,28 +68,50 @@ class PresenceRedisManager(socketio.RedisManager):
         pipe.execute()
 
 
-def create_app(redis_url='redis://', channel='socketio', secret=None, token_max_age=None):
-    mgr = PresenceRedisManager(redis_url, channel=channel)
-    sio = socketio.Server(client_manager=mgr, async_mode='eventlet')
+class PresenceEnabledServer(socketio.Server):
+    def enter_room(self, sid, room, namespace=None, skip_presence=False):
+        namespace = namespace or '/'
+        self.logger.info('%s is entering room %s [%s]', sid, room, namespace)
+        self.manager.enter_room(sid, namespace, room, skip_presence)
+
+
+def create_app(redis_url='redis://', channel='socketio', secret=None, presence_session_id=None, token_max_age=None, debug=False):
+    mgr = PresenceEnabledRedisManager(redis_url, channel=channel, presence_session_id=presence_session_id)
+    sio = PresenceEnabledServer(client_manager=mgr, async_mode='eventlet', logger=not debug)
     token_serializer = URLSafeTimedSerializer(secret)
     default_ns = '/'
 
     @sio.on('connect')
     def connect(sid, env):
         if not secret:
-            return
+            raise ConnectionRefusedError('no secret defined')
+
+        qs = urlparse.parse_qs(env['QUERY_STRING'])
+        if not 'token' in qs:
+            raise ConnectionRefusedError('missing token')
+
         try:
-            qs = urlparse.parse_qs(env['QUERY_STRING'])
-            if not 'token' in qs:
-                return False
-            user_info, allowed_rooms = token_serializer.loads(qs['token'][0], max_age=token_max_age)
-            env['allowed_rooms'] = allowed_rooms
-            if user_info:
-                mgr.set_member_info(sid, default_ns, user_info)
-            logger.debug('New client connection: %s ; %s' % (sid, user_info))
+            token_data = token_serializer.loads(qs['token'][0], max_age=token_max_age)
         except BadSignature:
+            raise
             logger.debug('Client provided an invalid token')
-            return False
+            raise ConnectionRefusedError('invalid token')
+
+        if len(token_data) == 3:
+            user_info, user_room, allowed_rooms = token_data
+        else:
+            # old format
+            user_info, allowed_rooms = token_data
+            user_room = None
+
+        env['allowed_rooms'] = allowed_rooms
+        if user_info:
+            mgr.set_member_info(sid, default_ns, user_info)
+        if user_room:
+            sio.enter_room(sid, user_room, skip_presence=True)
+
+        logger.debug('New client connection: %s ; %s' % (sid, user_info))
+        return True
 
     @sio.on('members')
     def get_room_members(sid, data):
@@ -97,7 +121,7 @@ def create_app(redis_url='redis://', channel='socketio', secret=None, token_max_
 
     @sio.on('join')
     def join(sid, data):
-        if sio.environ[sid].get('allowed_rooms') and data['room'] not in sio.environ[sid]['allowed_rooms']:
+        if sio.environ[sid].get('allowed_rooms') is not None and data['room'] not in sio.environ[sid]['allowed_rooms']:
             logger.debug('Client %s is not allowed to join room %s' % (sid, data['room']))
             return False
         sio.enter_room(sid, data['room'])
@@ -126,32 +150,26 @@ def create_app(redis_url='redis://', channel='socketio', secret=None, token_max_
     return socketio.WSGIApp(sio)
 
 
-def _get_env_var(wsgi_env, name, default=None):
-    return wsgi_env.get(name, os.environ.get(name, default))
-
-
 _wsgi_app = None
 def wsgi_app(environ, start_response):
     global _wsgi_app
     if not _wsgi_app:
-        _wsgi_app = create_app(_get_env_var(environ, 'SIO_REDIS_URL', 'redis://'),
-            _get_env_var(environ, 'SIO_CHANNEL', 'socketio'), _get_env_var(environ, 'SIO_SECRET'))
+        _wsgi_app = create_app(os.environ.get('SIO_REDIS_URL', 'redis://'),
+            os.environ.get('SIO_CHANNEL', 'socketio'), os.environ.get('SIO_SECRET'),
+            os.environ.get('SIO_PRESENCE_SESSION_ID'), os.environ.get('SIO_DEBUG', False))
     return _wsgi_app(environ, start_response)
 
 
-def cleanup_wsgi_app():
-    if _wsgi_app:
-        _wsgi_app.engineio_app.manager.cleanup_presence_keys()
-
-
-def run_server(port=8888, debug=False, log_output=False, **kwargs):
+def run_server(port=8888, access_logs=False, **kwargs):
     logger.addHandler(logging.StreamHandler())
+    debug = kwargs.get('debug', False)
     if debug:
         logger.setLevel(logging.DEBUG)
         logger.debug('Push server running in DEBUG')
-    env = dict([("SIO_%s" % k.upper(), v) for k, v in kwargs.items()])
-    wsgi.server(eventlet.listen(('', port)), wsgi_app, environ=env, debug=debug, log_output=debug or log_output)
-    cleanup_wsgi_app()
+    app = create_app(**kwargs)
+    wsgi.server(eventlet.listen(('', port)), app, debug=debug, log_output=debug or access_logs)
+    if not kwargs.get('presence_session_id'):
+        app.engineio_app.manager.cleanup_presence_keys()
 
 
 if __name__ == '__main__':
@@ -163,11 +181,14 @@ if __name__ == '__main__':
     argparser.add_argument('-r', '--redis-url', default=os.environ.get('SIO_REDIS_URL', 'redis://'), type=str,
         help='Redis URL')
     argparser.add_argument('-c', '--channel', default=os.environ.get('SIO_CHANNEL', 'socketio'), type=str,
-        help='Channel')
+        help='Redis channel')
     argparser.add_argument('-s', '--secret', default=os.environ.get('SIO_SECRET'), type=str,
         help='Secret')
+    argparser.add_argument('--presence-session-id', default=os.environ.get('SIO_PRESENCE_SESSION_ID'), type=str,
+        help='Presence session id (when using multiple servers, use the same presence session id on all instances)')
     argparser.add_argument('--debug', action='store_true', help='Debug mode')
     argparser.add_argument('--access-logs', action='store_true', help='Show access logs in console')
     args = argparser.parse_args()
-    run_server(args.port, debug=args.debug, log_output=args.access_logs,
-        redis_url=args.redis_url, channel=args.channel, secret=args.secret)
+    run_server(args.port, debug=args.debug, access_logs=args.access_logs,
+        redis_url=args.redis_url, channel=args.channel, secret=args.secret,
+        presence_session_id=args.presence_session_id)

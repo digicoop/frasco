@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='1.5.4',
+    version='1.6.0',
     url='http://github.com/digicoop/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -18,6 +18,7 @@ setup(
             'billing/invoicing/emails/*.html',
             'mail/templates/*.html',
             'mail/templates/layouts/*',
+            'push/static/*.js',
             'templating/*.html',
             'templating/bootstrap/*.html',
             'users/emails/users/*.txt',
@@ -58,7 +59,7 @@ setup(
         'inflection',
         'geoip2',
         'redis',
-        'python-socketio',
+        'python-socketio~=4.2.0',
         'eventlet',
         'authlib',
         'stripe',
