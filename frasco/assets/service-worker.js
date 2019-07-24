@@ -23,23 +23,23 @@ self.addEventListener('activate', function(event) {
 
 self.addEventListener('fetch', event => {
   event.respondWith(caches.match(event.request).then(function(response) {
-    if (response) {
-      return response;
-    }
-    if (!navigator.onLine && CACHE_OFFLINE_FALLBACK && matchDomain(event.request.url, CACHE_DOMAIN)
-        && !matchURL(event.request.url, CACHE_OFFLINE_FALLBACK_IGNORE_PATHS))
-    {
-      return caches.match(CACHE_OFFLINE_FALLBACK);
-    }
-    return fetch(event.request).then(function(response) {
+    return response || fetch(event.request).then(function(response) {
       if (matchDomain(event.request.url, CACHE_DOMAIN) && (CACHE_DYNAMIC_URLS === true || matchURL(event.request.url, CACHE_DYNAMIC_URLS))) {
         return caches.open(CACHE_NAME).then(function(cache) {
           cache.put(event.request, response.clone());
+          return response;
+        }).catch(function() {
           return response;
         });
       }
       return response;
     });
+  }).catch(function() {
+    if (CACHE_OFFLINE_FALLBACK && matchDomain(event.request.url, CACHE_DOMAIN)
+        && !matchURL(event.request.url, CACHE_OFFLINE_FALLBACK_IGNORE_PATHS))
+    {
+      return caches.match(CACHE_OFFLINE_FALLBACK);
+    }
   }));
 });
 
