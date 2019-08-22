@@ -159,16 +159,25 @@ def wsgi_app(environ, start_response):
     return _wsgi_app(environ, start_response)
 
 
-def run_server(port=8888, access_logs=False, reuse_addr=False, **kwargs):
+def run_server(port=8888, access_logs=False, reuse_addr=False, presence_session_id=None, **kwargs):
     logger.addHandler(logging.StreamHandler())
     debug = kwargs.get('debug', False)
     if debug:
         logger.setLevel(logging.DEBUG)
         logger.debug('Push server running in DEBUG')
+
+    cleanup_presence_keys = False
+    if not presence_session_id:
+        presence_session_id = str(uuid.uuid4()).split('-')[0]
+        logger.info('Generated random presence session id: %s' % presence_session_id)
+        cleanup_presence_keys = True
+
+    kwargs['presence_session_id'] = presence_session_id
     app = create_app(**kwargs)
     socket = eventlet.listen(('', port), reuse_addr=reuse_addr)
     wsgi.server(socket, app, debug=debug, log_output=debug or access_logs)
-    if not kwargs.get('presence_session_id'):
+
+    if cleanup_presence_keys:
         app.engineio_app.manager.cleanup_presence_keys()
 
 
