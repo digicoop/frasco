@@ -1,19 +1,14 @@
 from werkzeug.utils import import_string as wz_import_string, cached_property
-from werkzeug.local import LocalProxy, LocalStack
-from flask import Markup, json, request, _request_ctx_stack, has_request_context, abort, current_app
-import imp
+from flask import abort
+from slugify import slugify
 import functools
 import re
-from slugify import slugify
 import yaml
-import speaklater
 import os
-from contextlib import contextmanager
 import subprocess
 import click
 import inspect
 import logging
-from .helpers import url_for
 
 
 def import_string(impstr, attr=None):
@@ -102,7 +97,6 @@ def import_class(impstr, clstypes, fallback_package=None):
         return find_class_in_module(import_string(fallback_package + "." + impstr), clstypes)
 
 
-
 def remove_yaml_frontmatter(source, return_frontmatter=False):
     """If there's one, remove the YAML front-matter from the source
     """
@@ -136,24 +130,6 @@ def populate_obj(obj, attrs):
         setattr(obj, k, v)
 
 
-def url_for_static(filename, **kwargs):
-    """Shortcut function for url_for('static', filename=filename)
-    """
-    return url_for('static', filename=filename, **kwargs)
-
-
-def url_for_same(**overrides):
-    return url_for(request.endpoint, **dict(dict(request.args,
-        **request.view_args), **overrides))
-
-
-def wrap_in_markup(f):
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-        return Markup(f(*args, **kwargs))
-    return wrapper
-
-
 def make_kwarg_validator(name, validator_func):
     if not isinstance(name, tuple):
         name = (name,)
@@ -174,13 +150,6 @@ def kwarg_validator(name):
     def decorator(validator_func):
         return make_kwarg_validator(name, validator_func)
     return decorator
-
-
-def inject_app_config(app, config, prefix=None):
-    for k, v in config.iteritems():
-        if prefix:
-            k = "%s%s" % (prefix, k)
-        app.config[k.upper()] = v
 
 
 def extract_unmatched_items(items, allowed_keys, prefix=None, uppercase=False):
@@ -238,21 +207,6 @@ class AttrDict(dict):
         return dict(self)
 
 
-class JSONEncoder(json.JSONEncoder):
-    """A JSONEncoder which always activates the for_json feature
-    """
-    def __init__(self, *args, **kwargs):
-        kwargs["for_json"] = True
-        super(JSONEncoder, self).__init__(*args, **kwargs)
-
-    def default(self, o):
-        if isinstance(o, speaklater._LazyString):
-            return o.value
-        if isinstance(o, set):
-            return list(o)
-        return json.JSONEncoder.default(self, o)
-
-
 class ShellError(Exception):
     def __init__(self, returncode, stderr):
         super(ShellError, self).__init__(stderr)
@@ -273,13 +227,6 @@ def shell_exec(args, echo=True, fg="green", **kwargs):
     if echo:
         click.secho(out, fg=fg)
     return out
-
-
-def get_remote_addr():
-    if current_app.debug and "__remoteaddr" in request.values:
-        return request.values["__remoteaddr"]
-    return request.remote_addr
-
 
 
 def match_domains(domain, allowed_domains):

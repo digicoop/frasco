@@ -3,7 +3,8 @@ from jinja2.ext import ExprStmtExtension
 from jinja_macro_tags import configure_environment as configure_macro_environment, FileLoader
 from jinja_layout import LayoutExtension
 import os
-from ..utils import url_for_static, url_for_same, slugify
+from ..helpers import url_for_static, url_for_same
+from ..utils import slugify
 from .extensions import *
 from helpers import *
 

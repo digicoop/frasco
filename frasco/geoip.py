@@ -1,6 +1,7 @@
 from flask import session, g, current_app
 from frasco.ext import *
-from frasco.utils import get_remote_addr, shell_exec
+from frasco.utils import shell_exec
+from frasco.helpers import get_remote_addr
 import geoip2.database
 import os
 import logging

@@ -1,7 +1,8 @@
 from flask import Flask
 from flask.ctx import has_request_context
 from frasco.config import Config
-from frasco.utils import JSONEncoder, AttrDict
+from frasco.utils import AttrDict
+from frasco.json_decoder import JSONEncoder
 from frasco.templating import configure_environment
 from werkzeug.middleware.proxy_fix import ProxyFix
 import os

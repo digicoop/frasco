@@ -1,5 +1,4 @@
 from frasco.mail.provider import MailProvider
-from frasco.utils import inject_app_config
 
 
 class SMTPProvider(MailProvider):

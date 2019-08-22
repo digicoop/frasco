@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy, Model as BaseModel, SignallingSession
 from flask_migrate import Migrate
 from frasco.ext import get_extension_config
-from frasco.utils import inject_app_config
+from frasco.helpers import inject_app_config
 from sqlalchemy import event
 import datetime
 from flask import current_app
