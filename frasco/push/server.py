@@ -77,7 +77,7 @@ class PresenceEnabledServer(socketio.Server):
 
 def create_app(redis_url='redis://', channel='socketio', secret=None, presence_session_id=None, token_max_age=None, debug=False):
     mgr = PresenceEnabledRedisManager(redis_url, channel=channel, presence_session_id=presence_session_id)
-    sio = PresenceEnabledServer(client_manager=mgr, async_mode='eventlet', logger=not debug)
+    sio = PresenceEnabledServer(client_manager=mgr, async_mode='eventlet', logger=not debug, cors_allowed_origins='*') # client must be identified via url token so cors to * is not a big risk
     token_serializer = URLSafeTimedSerializer(secret)
     default_ns = '/'
 
@@ -93,7 +93,6 @@ def create_app(redis_url='redis://', channel='socketio', secret=None, presence_s
         try:
             token_data = token_serializer.loads(qs['token'][0], max_age=token_max_age)
         except BadSignature:
-            raise
             logger.debug('Client provided an invalid token')
             raise ConnectionRefusedError('invalid token')
 

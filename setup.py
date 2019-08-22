@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='1.7.0',
+    version='1.7.1',
     url='http://github.com/digicoop/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -59,7 +59,7 @@ setup(
         'inflection',
         'geoip2',
         'redis',
-        'python-socketio~=4.2.0',
+        'python-socketio~=4.3.1',
         'eventlet',
         'authlib',
         'stripe',
