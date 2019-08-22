@@ -29,9 +29,9 @@ class FrascoPushConnection extends EventTarget {
       });
       this.socket.on('reconnect', () => {
         this.dispatchEvent(new CustomEvent('socketIdChanged', {detail: {id: this.socket.id}}));
-        Object.values(this.rooms).forEach((room) => {
-          room.join(true).catch(() => {
-
+        Object.keys(this.rooms).forEach((name) => {
+          this.rooms[name].join(true).catch(() => {
+            delete this.rooms[name];
           });
         });
         this.dispatchEvent(new Event('reconnected'));
@@ -57,6 +57,9 @@ class FrascoPushConnection extends EventTarget {
       var room = new FrascoPushRoom(this, roomName);
       room.join().then(() => {
         this.rooms[roomName] = room;
+        room.addEventListener('left', () => {
+          delete this.rooms[roomName];
+        });
         resolve(room);
       }).catch(() => {
         reject();
