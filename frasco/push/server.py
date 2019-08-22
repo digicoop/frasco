@@ -160,14 +160,15 @@ def wsgi_app(environ, start_response):
     return _wsgi_app(environ, start_response)
 
 
-def run_server(port=8888, access_logs=False, **kwargs):
+def run_server(port=8888, access_logs=False, reuse_addr=False, **kwargs):
     logger.addHandler(logging.StreamHandler())
     debug = kwargs.get('debug', False)
     if debug:
         logger.setLevel(logging.DEBUG)
         logger.debug('Push server running in DEBUG')
     app = create_app(**kwargs)
-    wsgi.server(eventlet.listen(('', port)), app, debug=debug, log_output=debug or access_logs)
+    socket = eventlet.listen(('', port), reuse_addr=reuse_addr)
+    wsgi.server(socket, app, debug=debug, log_output=debug or access_logs)
     if not kwargs.get('presence_session_id'):
         app.engineio_app.manager.cleanup_presence_keys()
 
@@ -188,7 +189,8 @@ if __name__ == '__main__':
         help='Presence session id (when using multiple servers, use the same presence session id on all instances)')
     argparser.add_argument('--debug', action='store_true', help='Debug mode')
     argparser.add_argument('--access-logs', action='store_true', help='Show access logs in console')
+    argparser.add_argument('--reuse-addr', action='store_true', help='Reuse address and port if already bound')
     args = argparser.parse_args()
     run_server(args.port, debug=args.debug, access_logs=args.access_logs,
         redis_url=args.redis_url, channel=args.channel, secret=args.secret,
-        presence_session_id=args.presence_session_id)
+        presence_session_id=args.presence_session_id, reuse_addr=args.reuse_addr)
