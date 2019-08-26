@@ -39,19 +39,17 @@ def get_template_source(template_filename, locale=None):
     for tpl_filename in [localized_filename, template_filename]:
         if not tpl_filename:
             continue
-        # only extract the frontmatter from the first template if
-        # multiple extensions are provided
         filename, ext = os.path.splitext(tpl_filename)
-        if "," in ext:
-            source_filename = filename + ext.split(",")[0]
-        else:
-            source_filename = tpl_filename
-        try:
-            source, _, __ = state.jinja_env.loader.get_source(state.jinja_env, source_filename)
-        except TemplateNotFound:
-            pass
-        if source:
-            return tpl_filename, source
+        auto_ext = not ext
+        if auto_ext:
+            ext = ".md,html,txt"
+        for source_filename in ["%s.%s" % (filename, e) for e in ext[1:].split(",")]:
+            try:
+                source, _, __ = state.jinja_env.loader.get_source(state.jinja_env, source_filename)
+            except TemplateNotFound:
+                continue
+            if source:
+                return tpl_filename, source
 
     raise TemplateNotFound(template_filename)
 
@@ -76,9 +74,17 @@ def render_message(template_filename, vars=None, auto_render_missing_content_typ
                 vars.setdefault(k, state.jinja_env.from_string(v).render(**vars))
 
     filename, ext = os.path.splitext(template_filename)
+    auto_ext = not ext
+    if auto_ext:
+        ext = ".md,html,txt"
     templates = [("%s.%s" % (filename, e), e) for e in ext[1:].split(",")]
     for tpl_filename, ext in templates:
-        rendered = state.jinja_env.get_template(tpl_filename).render(**vars)
+        try:
+            rendered = state.jinja_env.get_template(tpl_filename).render(**vars)
+        except TemplateNotFound:
+            if not auto_ext:
+                raise
+            continue
         if ext == "html":
             html_body = rendered
         elif ext == "txt":
@@ -88,6 +94,8 @@ def render_message(template_filename, vars=None, auto_render_missing_content_typ
             content = markdown.markdown(rendered, **state.options["markdown_options"])
             html_body = state.jinja_env.get_template(auto_markdown_template).render(
                 content=content, **vars)
+        if auto_ext and html_body and text_body:
+            break
 
     if (auto_render_missing_content_type is not None and auto_render_missing_content_type) or \
         (auto_render_missing_content_type is None and state.options["auto_render_missing_content_type"]):

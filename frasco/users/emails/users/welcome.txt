@@ -1,4 +1,0 @@
----
-subject: Welcome
----
-Welcome!

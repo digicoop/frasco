@@ -16,7 +16,7 @@ def enable_2fa(user, code):
         return False
     user.two_factor_auth_enabled = True
     recovery_code = generate_otp_recovery_code(user)
-    send_mail(user.email, 'users/2fa_enabled.txt', recovery_code=recovery_code)
+    send_mail(user.email, 'users/2fa_enabled', recovery_code=recovery_code)
     return recovery_code
 
 
@@ -26,7 +26,7 @@ def disable_2fa(user):
     user.two_factor_auth_enabled = False
     user.otp_code = None
     user.otp_recovery_code = None
-    send_mail(user.email, 'users/2fa_disabled.txt')
+    send_mail(user.email, 'users/2fa_disabled')
 
 
 def verify_2fa(user, code):
