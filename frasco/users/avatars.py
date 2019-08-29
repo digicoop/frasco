@@ -81,28 +81,27 @@ def url_for_avatar(user):
     username = getattr(user, state.options["flavatar_name_column"] or 'username', None)
     if username:
         if isinstance(username, unicode):
-            username = username.lower().encode('utf-8')
-        else:
-            username = username.lower()
-        username = slugify(username)
+            username = username.encode('utf-8')
+        username = slugify(username.lower())
         hash = hashlib.md5(username).hexdigest()
+
     email = getattr(user, state.options["gravatar_email_column"] or 'email', None)
     if email:
         if isinstance(email, unicode):
-            email = email.lower().encode('utf-8')
-        else:
-            email = email.lower()
-        hash = hashlib.md5(email).hexdigest()
+            email = email.encode('utf-8')
+        hash = hashlib.md5(email.lower()).hexdigest()
+        if not username:
+            username = slugify(email.split('@')[0])
 
-    if state.options["force_flavatar"] and (email or username):
+    if state.options["force_flavatar"] and username:
         if state.options['add_flavatar_route']:
             return url_for('flavatar', name=username, bgcolorstr=hash, _external=True)
-        return svg_to_base64_data(generate_first_letter_avatar_svg(username or email, hash))
+        return svg_to_base64_data(generate_first_letter_avatar_svg(username, hash))
     if state.options["force_gravatar"] and email:
         return url_for_gravatar(email)
     if state.options['url'] and email:
         return state.options["url"].format(email=email, email_hash=hash, username=username)
-    return url_for('avatar', hash=hash, name=(username or email), _external=True)
+    return url_for('avatar', hash=hash, name=username, _external=True)
 
 
 def url_for_gravatar(email, size=None, default=None):
