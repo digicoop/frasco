@@ -84,7 +84,7 @@ def get_s3_bucket(bucket=None, backend=None):
         assert 'bucket' in options, "Missing bucket option"
         bucket = options['bucket']
     try:
-        return get_s3_connection(backend=backend).get_bucket(bucket)
+        return get_s3_connection(backend=backend).get_bucket(bucket, validate=False)
     except Exception as e:
         current_app.logger.debug(e.body)
         raise
