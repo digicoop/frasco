@@ -1,5 +1,57 @@
+/**
+* Safari and Edge do not support extending from EventTarget so we are bundling our own
+* From https://developer.mozilla.org/en-US/docs/Web/API/EventTarget#Simple_implementation_of_EventTarget
+*/
+class FrascoPushEventTarget {
+  constructor() {
+    this.listeners = {};
+  }
+  addEventListener(type, callback) {
+    if (!(type in this.listeners)) {
+      this.listeners[type] = [];
+    }
+    this.listeners[type].push(callback);
+  }
+  removeEventListener(type, callback) {
+    if (!(type in this.listeners)) {
+      return;
+    }
+    var stack = this.listeners[type];
+    for (var i = 0, l = stack.length; i < l; i++) {
+      if (stack[i] === callback){
+        stack.splice(i, 1);
+        return;
+      }
+    }
+  }
+  dispatchEvent(event) {
+    if (!(event.type in this.listeners)) {
+      return true;
+    }
+    var stack = this.listeners[event.type].slice();
+    
+    for (var i = 0, l = stack.length; i < l; i++) {
+      stack[i].call(this, event);
+    }
+    return !event.defaultPrevented;
+  }
+  createEvent(...args) {
+    if (typeof CustomEvent === 'function') {
+      return new CustomEvent(...args);
+    }
+    return new FrascoPushEvent(...args);
+  }
+}
 
-class FrascoPushConnection extends EventTarget {
+class FrascoPushEvent {
+  constructor(type, opts) {
+    this.type = type;
+    this.detail = opts ? (opts.detail || null) : null;
+    this.defaultPrevented = false;
+  }
+}
+
+class FrascoPushConnection extends FrascoPushEventTarget {
   constructor(url, token, autoConnect = true) {
     super();
     this.url = url;
@@ -18,26 +70,26 @@ class FrascoPushConnection extends EventTarget {
       this.socket = io(this.url, options);
       this.rooms = {};
       this.socket.on('connect', () => {
-        this.dispatchEvent(new Event('connected'));
-        this.dispatchEvent(new CustomEvent('socketIdChanged', {detail: {id: this.socket.id}}));
+        this.dispatchEvent(this.createEvent('connected'));
+        this.dispatchEvent(this.createEvent('socketIdChanged', {detail: {id: this.socket.id}}));
         resolve(this.socket.id);
       });
       this.socket.on('reconnecting', (attempts) => {
         if (attempts > 5) {
-          this.dispatchEvent(new Event('connectionLost'));
+          this.dispatchEvent(this.createEvent('connectionLost'));
         }
       });
       this.socket.on('reconnect', () => {
-        this.dispatchEvent(new CustomEvent('socketIdChanged', {detail: {id: this.socket.id}}));
+        this.dispatchEvent(this.createEvent('socketIdChanged', {detail: {id: this.socket.id}}));
         Object.keys(this.rooms).forEach((name) => {
           this.rooms[name].join(true).catch(() => {
             delete this.rooms[name];
           });
         });
-        this.dispatchEvent(new Event('reconnected'));
+        this.dispatchEvent(this.createEvent('reconnected'));
       });
       this.socket.on('disconnect', () => {
-        this.dispatchEvent(new Event('disconnected'));
+        this.dispatchEvent(this.createEvent('disconnected'));
       });
     });
   }
@@ -76,7 +128,7 @@ class FrascoPushConnection extends EventTarget {
   }
 }
 
-class FrascoPushRoom extends EventTarget {
+class FrascoPushRoom extends FrascoPushEventTarget {
   constructor(conn, name) {
     super();
     this.conn = conn;
@@ -84,12 +136,12 @@ class FrascoPushRoom extends EventTarget {
     this.joined = false;
     this.members = {};
     this.subs = [];
-
+    
     this.on('joined', (user) => {
       this.members[user.sid] = user.info;
       this._updateMembers();
     });
-
+    
     this.on('left', (sid) => {
       if (typeof(this.members[sid]) !== 'undefined') {
         delete this.members[sid];
@@ -107,7 +159,7 @@ class FrascoPushRoom extends EventTarget {
         if (members) {
           this.joined = true;
           this._updateMembers(members);
-          this.dispatchEvent(new Event('joined'));
+          this.dispatchEvent(this.createEvent('joined'));
           resolve();
         } else {
           reject();
@@ -139,12 +191,12 @@ class FrascoPushRoom extends EventTarget {
     this.joined = false;
     this._updateMembers({});
     this.removeAllListeners();
-    this.dispatchEvent(new Event('left'));
+    this.dispatchEvent(this.createEvent('left'));
   }
   _updateMembers(members) {
     if (members) {
       this.members = members;
     }
-    this.dispatchEvent(new Event('membersUpdated'));
+    this.dispatchEvent(this.createEvent('membersUpdated'));
   }
 }
