@@ -14,6 +14,7 @@ class S3StorageBackend(RemoteOpenStorageBackendMixin, StorageBackend):
                        'signed_url': False,
                        's3_urls_ttl': 3600,
                        'set_content_disposition_header_with_filename': True,
+                       'ignore_images_content_disposition_header': True,
                        'charset': None,
                        'use_sig_v4': False,
                        'region_name': None,
@@ -99,7 +100,10 @@ def upload_file_to_s3(stream_or_filename, filename, bucket=None, prefix=None,
     bucket_key = bucket.new_key(prefix + filename)
     acl = acl or options['acl']
     headers = {}
-    if options['set_content_disposition_header_with_filename']:
+    set_content_disposition = options['set_content_disposition_header_with_filename']
+    if options['ignore_images_content_disposition_header'] and mimetype and mimetype.startswith('image/'):
+        set_content_disposition = False
+    if set_content_disposition:
         headers['Content-Disposition'] = 'attachment;filename="%s"' % (
             content_disposition_filename or filename)
     if mimetype:
