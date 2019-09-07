@@ -41,7 +41,7 @@ class SignupWithUsernameForm(SignupForm):
 
 
 class SignupFormWithTOSMixin(object):
-    tos = BooleanField(lazy_translate('You agree to our Terms of Service'))
+    tos = BooleanField(lazy_translate('You agree to our Terms of Service'), validators=[validators.data_required()])
 
 
 class SendResetPasswordForm(FlaskForm):
