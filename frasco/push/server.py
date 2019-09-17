@@ -71,13 +71,13 @@ class PresenceEnabledRedisManager(socketio.RedisManager):
 class PresenceEnabledServer(socketio.Server):
     def enter_room(self, sid, room, namespace=None, skip_presence=False):
         namespace = namespace or '/'
-        self.logger.info('%s is entering room %s [%s]', sid, room, namespace)
+        self.logger.debug('%s is entering room %s [%s]', sid, room, namespace)
         self.manager.enter_room(sid, namespace, room, skip_presence)
 
 
 def create_app(redis_url='redis://', channel='socketio', secret=None, presence_session_id=None, token_max_age=None, debug=False):
     mgr = PresenceEnabledRedisManager(redis_url, channel=channel, presence_session_id=presence_session_id)
-    sio = PresenceEnabledServer(client_manager=mgr, async_mode='eventlet', logger=not debug, cors_allowed_origins='*') # client must be identified via url token so cors to * is not a big risk
+    sio = PresenceEnabledServer(client_manager=mgr, async_mode='eventlet', logger=debug, cors_allowed_origins='*') # client must be identified via url token so cors to * is not a big risk
     token_serializer = URLSafeTimedSerializer(secret)
     default_ns = '/'
 
