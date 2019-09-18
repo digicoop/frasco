@@ -18,6 +18,9 @@ from .invoice import *
 from .model import *
 
 
+stripe.enable_telemetry = False
+
+
 class FrascoStripe(Extension):
     name = "frasco_stripe"
     defaults = {"default_currency": None,
@@ -121,6 +124,7 @@ def on_invoice_payment(sender, stripe_event):
         else:
             sub_obj = state.Model.query_by_stripe_subscription(invoice.subscription).first()
         if sub_obj:
+            sub_obj.plan_status = sub_obj.stripe_subscription.status
             sub_obj.update_last_stripe_subscription_charge(invoice)
 
     if getattr(obj, '__stripe_has_eu_vat__', False) and getattr(obj, '__stripe_has_billing_fields__', False) and is_eu_country(obj.billing_country):
