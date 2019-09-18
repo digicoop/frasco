@@ -16,6 +16,7 @@ logger = logging.getLogger('frasco.billing.stripe')
 class StripeModelMixin(object):
     __stripe_auto_create_customer__ = True
     __stripe_email_property__ = 'email'
+    __stripe_customer_expand__ = None
 
     _stripe_customer_id = db.Column('stripe_customer_id', db.String, index=True)
     has_stripe_source = db.Column(db.Boolean, default=False, index=True)
@@ -36,7 +37,7 @@ class StripeModelMixin(object):
     @cached_property
     def stripe_customer(self):
         try:
-            return stripe.Customer.retrieve(self.stripe_customer_id)
+            return stripe.Customer.retrieve(self.stripe_customer_id, expand=self.__stripe_customer_expand__)
         except stripe.error.InvalidRequestError:
             if self.__stripe_auto_create_customer__:
                 return self.create_stripe_customer()
@@ -52,8 +53,10 @@ class StripeModelMixin(object):
 
     def create_stripe_customer(self, **kwargs):
         kwargs.setdefault('email', getattr(self, self.__stripe_email_property__, None))
+        kwargs.setdefault('expand', self.__stripe_customer_expand__)
         customer = stripe.Customer.create(**kwargs)
         self.stripe_customer_id = customer.id if customer else None
+        self.__dict__['stripe_customer'] = customer
         self._update_stripe_source()
         logger.info(u'Customer %s for model #%s created' % (customer.id, self.id))
         return customer
@@ -63,11 +66,11 @@ class StripeModelMixin(object):
         for k, v in kwargs.iteritems():
             setattr(customer, k, v)
         customer.save()
+        self.__dict__['stripe_customer'] = customer
         self._update_stripe_source()
         logger.info(u'Customer %s updated' % self.stripe_customer_id)
 
     def _update_stripe_source(self):
-        self.__dict__.pop('stripe_customer', None)
         customer = self.stripe_customer
         self.has_stripe_source = customer.default_source is not None \
             if customer and not getattr(customer, 'deleted', False) else False
@@ -83,9 +86,11 @@ class StripeModelMixin(object):
                     logger.warning(u"Customer %s that was to be deleted didn't exist anymore in Stripe" % self.stripe_customer_id)
                     raise
         self.stripe_customer_id = None
+        self.__dict__.pop('stripe_customer', None)
 
     def add_stripe_source(self, token=None, **source_details):
         self.stripe_customer.sources.create(source=token or source_details)
+        self.__dict__.pop('stripe_customer', None)
         self._update_stripe_source()
         logger.info(u'Added new stripe source to %s' % self.stripe_customer_id)
 
@@ -97,6 +102,7 @@ class StripeModelMixin(object):
         except stripe.error.InvalidRequestError:
             return
         source.delete()
+        self.__dict__.pop('stripe_customer', None)
         self._update_stripe_source()
         logger.info(u'Removed stripe source from %s' % self.stripe_customer_id)
 
@@ -107,6 +113,7 @@ class StripeModelMixin(object):
 
 
 class StripeSubscriptionModelMixin(StripeModelMixin):
+    __stripe_subscription_expand__ = None
     stripe_subscription_id = db.Column(db.String, index=True)
     
     @declared_attr
@@ -142,7 +149,7 @@ class StripeSubscriptionModelMixin(StripeModelMixin):
         if not self.stripe_customer_id or not self.stripe_subscription_id:
             return
         try:
-            return self.stripe_customer.subscriptions.retrieve(self.stripe_subscription_id)
+            return self.stripe_customer.subscriptions.retrieve(self.stripe_subscription_id, expand=self.__stripe_subscription_expand__)
         except stripe.error.InvalidRequestError:
             return
 
@@ -176,7 +183,8 @@ class StripeSubscriptionModelMixin(StripeModelMixin):
             return
 
         params = dict(plan=plan, quantity=quantity,
-            trial_end=_format_trial_end(kwargs.pop('trial_end', None)))
+            trial_end=_format_trial_end(kwargs.pop('trial_end', None)),
+            expand=self.__stripe_subscription_expand__)
         params.update(kwargs)
         if 'tax_percent' not in kwargs and state.options['default_subscription_tax_percent']:
             params['tax_percent'] = state.options['default_subscription_tax_percent']
@@ -208,6 +216,7 @@ class StripeSubscriptionModelMixin(StripeModelMixin):
 
         if subscription:
             self.stripe_subscription_id = subscription.id
+            self.__dict__['stripe_subscription'] = subscription
             self.plan_name = subscription.plan.id
             self.plan_status = subscription.status
             if self.plan_status == 'trialing':
@@ -218,6 +227,7 @@ class StripeSubscriptionModelMixin(StripeModelMixin):
                 self.plan_next_charge_at = None
         else:
             self.stripe_subscription_id = None
+            self.__dict__.pop('stripe_subscription', None)
             self.plan_name = None
             self.plan_status = 'canceled'
             self.plan_next_charge_at = None
