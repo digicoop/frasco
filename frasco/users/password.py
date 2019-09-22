@@ -45,9 +45,8 @@ class PasswordValidationFailedError(Exception):
         return self.reason
 
 
-def validate_password(user, password, flash_messages=True, raise_error=True, pwhash=None):
+def validate_password(user, password, flash_messages=True, raise_error=True):
     state = get_extension_state('frasco_users')
-    pwhash = hash_password(password) if not pwhash else pwhash
 
     if state.options['min_time_between_password_change'] and user.last_password_change_at and not user.must_reset_password_at_login:
         if (datetime.datetime.utcnow() - user.last_password_change_at).total_seconds() < state.options['min_time_between_password_change']:
@@ -89,7 +88,7 @@ def update_password(user, password, skip_validation=False, **kwargs):
     """
     state = get_extension_state('frasco_users')
     pwhash = hash_password(password)
-    if not skip_validation and not validate_password(user, password, pwhash=pwhash, **kwargs):
+    if not skip_validation and not validate_password(user, password, **kwargs):
         return False
     if state.options['prevent_password_reuse']:
         user.previous_passwords = [user.password] + (user.previous_passwords or [])
