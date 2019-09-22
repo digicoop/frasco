@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from flask import session, g, current_app
 from frasco.ext import *
 from frasco.utils import shell_exec

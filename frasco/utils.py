@@ -8,7 +8,6 @@ import os
 import subprocess
 import click
 import inspect
-import logging
 
 
 def import_string(impstr, attr=None):
@@ -244,17 +243,6 @@ def match_email_domain(email, allowed_domains):
         return False
     _, domain = email.split('@')
     return match_domains(domain, allowed_domains)
-
-
-def remove_all_handlers_from_logger(logger):
-    for handler in logger.handlers:
-        logger.removeHandler(handler)
-    return logger
-
-
-class ExcludeWerkzeugLogFilter(logging.Filter):
-    def filter(self, record):
-        return record.name != 'werkzeug'
 
 
 def join_url_rule(rule1, rule2):

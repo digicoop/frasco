@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from flask import current_app, has_app_context
 from frasco.utils import (AttrDict, import_string, find_classes_in_module, extract_unmatched_items,
                           import_string, import_class, deep_update_dict)

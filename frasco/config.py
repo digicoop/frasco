@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from flask import json
 from flask.config import Config as FlaskConfig
 from frasco.utils import deep_update_dict
