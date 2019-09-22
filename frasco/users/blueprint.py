@@ -3,7 +3,7 @@ from flask_login import logout_user
 from frasco.helpers import url_for
 from frasco.ext import get_extension_state, has_extension
 from frasco.utils import populate_obj, AttrDict
-from frasco.models import db
+from frasco.models import db, transaction
 from frasco.mail import send_mail
 from frasco.geoip import geolocate_country
 import datetime
@@ -60,8 +60,8 @@ def login():
                 session['login_remember'] = form.remember.data
                 return redirect(url_for('.login_2fa'))
 
-            login_user(user, remember=form.remember.data)
-            db.session.commit()
+            with transaction():
+                login_user(user, remember=form.remember.data)
             return redirect(redirect_url)
 
         flash(state.options['login_error_message'], 'error')
@@ -84,8 +84,8 @@ def login_2fa():
         remember_user = read_user_token(request.cookies['remember_2fa'], '2fa', remember_2fa_max_age)
         user = state.Model.query.get(session.pop('2fa'))
         if remember_user == user:
-            login_user(user, remember=session.pop('login_remember'))
-            db.session.commit()
+            with transaction():
+                login_user(user, remember=session.pop('login_remember'))
             return redirect(redirect_url)
 
     form = state.import_option('login_2fa_form_class')()
@@ -93,8 +93,8 @@ def login_2fa():
         user = state.Model.query.get(session.pop('2fa'))
         remember = session.pop('login_remember')
         if verify_2fa(user, form.code.data):
-            login_user(user, remember=remember)
-            db.session.commit()
+            with transaction():
+                login_user(user, remember=remember)
             r = make_response(redirect(redirect_url))
             if form.remember.data:
                 r.set_cookie('remember_2fa', generate_user_token(user, '2fa'),
@@ -177,12 +177,11 @@ def signup():
                 user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
             clear_oauth_signup_session()
             db.session.flush()
-            user_signed_up.send(user=user)
+            with transaction():
+                user_signed_up.send(user=user)
+                if state.options["login_user_on_signup"]:
+                    login_user(user, provider=user.signup_provider)
 
-            if state.options["login_user_on_signup"]:
-                login_user(user, provider=user.signup_provider)
-
-            db.session.commit()
             return redirect(redirect_url)
         except (UserValidationFailedError, PasswordValidationFailedError):
             db.session.rollback()
@@ -209,9 +208,9 @@ def oauth_signup():
 
     user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
     db.session.flush()
-    user_signed_up.send(user=user)
-    login_user(user, provider=session['oauth_signup'])
-    db.session.commit()
+    with transaction():
+        user_signed_up.send(user=user)
+        login_user(user, provider=session['oauth_signup'])
 
     clear_oauth_signup_session()
     return redirect(request.args.get("next") or _make_redirect_url(state.options["redirect_after_login"]))
@@ -267,15 +266,16 @@ def reset_password(token):
         abort(404)
 
     form = state.import_option('reset_password_form_class')()
-    if form.validate_on_submit() and update_password(user, form.password.data, raise_error=False):
-        if state.options['login_user_on_reset_password']:
-            login_user(user)
-        db.session.commit()
-        send_mail(user.email, "users/reset_password_done", locale=getattr(user, 'locale', None))
-        if msg:
-            flash(msg, "success")
-        if redirect_to:
-            return redirect(_make_redirect_url(redirect_to))
+    if form.validate_on_submit() and validate_password(user, form.password.data, raise_error=False):
+        with transaction():
+            update_password(user, form.password.data, skip_validation=True)
+            if state.options['login_user_on_reset_password']:
+                login_user(user)
+            send_mail(user.email, "users/reset_password_done", locale=getattr(user, 'locale', None))
+            if msg:
+                flash(msg, "success")
+            if redirect_to:
+                return redirect(_make_redirect_url(redirect_to))
 
     return render_template("users/reset_password.html", form=form)
 
