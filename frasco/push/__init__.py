@@ -70,11 +70,14 @@ class FrascoPush(Extension):
 
         @app.cli.command('push-server')
         @click.option('--access-logs', is_flag=True)
-        def cli_server(access_logs=False):
+        @click.option('--debug', is_flag=True)
+        def cli_server(access_logs=False, debug=False):
             """Start the push server"""
             args = list(state.server_cli)
             if access_logs:
                 args.append("--access-logs")
+            if debug:
+                args.append("--debug")
             process = subprocess.Popen(args)
             process.wait()
             sys.exit(process.returncode)
