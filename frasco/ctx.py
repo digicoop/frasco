@@ -63,14 +63,6 @@ class ContextStack(LocalStack):
         return super(ContextStack, self).__call__()
 
 
-def context_stack_on_request_context(name, cls=ContextStack):
-    def _get_object():
-        if has_request_context() and not hasattr(_request_ctx_stack.top, name):
-            setattr(_request_ctx_stack.top, name, cls())
-        return getattr(_request_ctx_stack.top, name, None)
-    return LocalProxy(_get_object)
-
-
 delayed_result = object()
 
 
