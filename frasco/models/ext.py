@@ -1,10 +1,7 @@
-from flask_sqlalchemy import SQLAlchemy, Model as BaseModel, SignallingSession
+from flask_sqlalchemy import SQLAlchemy, Model as BaseModel
 from flask_migrate import Migrate
 from frasco.ext import get_extension_config
 from frasco.helpers import inject_app_config
-from sqlalchemy import event
-import datetime
-from flask import current_app
 
 
 class Model(BaseModel):
@@ -33,13 +30,3 @@ class FrascoModels(SQLAlchemy):
 
 db = FrascoModels()
 
-
-@event.listens_for(SignallingSession, "before_flush")
-def before_flush(session, flush_context=None, instances=None):
-    for obj in session.dirty:
-        if (not hasattr(obj, 'clear_cache') and not hasattr(obj, 'updated_at')) or not session.is_modified(obj):
-            continue
-        if hasattr(obj, 'updated_at'):
-            obj.updated_at = datetime.datetime.utcnow()
-        if hasattr(obj, 'clear_cache'):
-            obj.clear_cache()
