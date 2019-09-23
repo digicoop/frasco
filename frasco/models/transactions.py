@@ -1,12 +1,15 @@
 from flask import after_this_request, _request_ctx_stack
+from flask_sqlalchemy import SignallingSession
 from frasco.ctx import ContextStack, DelayedCallsContext
+from frasco.utils import AttrDict
 from contextlib import contextmanager
+from sqlalchemy import event
 import functools
 from .ext import db
 import logging
 
 
-__all__ = ('transaction', 'as_transaction', 'is_transaction', 'delayed_tx_calls')
+__all__ = ('transaction', 'as_transaction', 'current_transaction', 'is_transaction', 'delayed_tx_calls')
 
 
 _transaction_ctx = ContextStack(default_item=True)
@@ -48,3 +51,20 @@ def as_transaction(func):
         with transaction():
             return func(*args, **kwargs)
     return wrapper
+
+
+_current_transaction_ctx = ContextStack()
+current_transaction = _current_transaction_ctx.make_proxy()
+
+
+@event.listens_for(SignallingSession, 'after_begin')
+def on_after_begin(session, transaction, connection):
+    _current_transaction_ctx.push(AttrDict())
+
+@event.listens_for(SignallingSession, 'after_commit')
+def on_after_commit(session):
+    _current_transaction_ctx.pop()
+
+@event.listens_for(SignallingSession, 'after_rollback')
+def on_after_rollback(session):
+    _current_transaction_ctx.pop()
