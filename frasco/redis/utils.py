@@ -80,7 +80,10 @@ def redis_cached_function(key, **opts):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            k = build_object_key(None, func.__name__, key, values=inspect.getcallargs(func, *args, **kwargs))
+            if callable(key):
+                k = key(*args, **kwargs)
+            else:
+                k = build_object_key(None, func.__name__, key, values=inspect.getcallargs(func, *args, **kwargs))
             return redis_get_set(k, lambda: func(*args, **kwargs), **opts)
         return wrapper
     return decorator
