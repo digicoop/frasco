@@ -1,5 +1,5 @@
 import mimetypes
-from werkzeug import FileStorage, secure_filename
+from werkzeug import FileStorage, secure_filename as wz_secure_filename
 from StringIO import StringIO
 from frasco.ext import get_extension_state
 from tempfile import NamedTemporaryFile, gettempdir
@@ -29,7 +29,7 @@ class StringFileStorage(FileStorage):
 
 
 def generate_filename(filename, uuid_prefix=None, uuid_prefix_path_separator=None, keep_filename=None,
-                      subfolders=None, backend=None):
+                      subfolders=None, backend=None, secure_filename=True):
 
     state = get_extension_state('frasco_upload', must_exist=False)
     if state:
@@ -46,7 +46,8 @@ def generate_filename(filename, uuid_prefix=None, uuid_prefix_path_separator=Non
         _, ext = os.path.splitext(filename)
         filename = str(uuid.uuid4()) + ext
     else:
-        filename = secure_filename(filename)
+        if secure_filename:
+            filename = wz_secure_filename(filename)
         if uuid_prefix:
             filename = str(uuid.uuid4()) + ("/" if uuid_prefix_path_separator else "-") + filename
 
@@ -71,7 +72,7 @@ def save_uploaded_file_temporarly(file, filename=None, tmp_dir=None):
     if not tmp_dir:
         tmp_dir = state.options.get('upload_tmp_dir') if state else None
     if filename:
-        tmpfilename = os.path.join(tmp_dir or gettempdir(), secure_filename(filename))
+        tmpfilename = os.path.join(tmp_dir or gettempdir(), wz_secure_filename(filename))
     else:
         _, ext = os.path.splitext(file.filename)
         tmp = NamedTemporaryFile(delete=False, suffix=ext, dir=tmp_dir)

@@ -52,7 +52,7 @@ setup(
         'htmlmin',
         'cssmin',
         'jsmin',
-        'boto',
+        'boto3',
         'goslate',
         'premailer',
         'Markdown',
