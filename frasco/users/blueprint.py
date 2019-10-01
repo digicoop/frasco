@@ -108,9 +108,10 @@ def login_2fa():
 
 @users_blueprint.route('/logout')
 def logout():
-    redirect_to = get_extension_state('frasco_users').options["redirect_after_logout"]
+    state = get_extension_state('frasco_users')
+    redirect_url = request.args.get("next") or _make_redirect_url(state.options["redirect_after_logout"])
     logout_user()
-    return redirect(_make_redirect_url(redirect_to))
+    return redirect(redirect_url)
 
 
 @users_blueprint.route('/signup', methods=['GET', 'POST'])
