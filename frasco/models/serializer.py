@@ -34,13 +34,24 @@ class DatabaseDictSerializer(object):
             return data
         if obj.__table__.name in ignore_tables:
             return data
+
         row = obj.__export_to_dict__(data) if hasattr(obj, '__export_to_dict__') else model_obj_to_dict(obj, value_serializer=self._dump_value)
         if row:
             data.setdefault(obj.__table__.name, []).append(row)
-        if follow_rels and (isinstance(follow_rels, (list, tuple)) or hasattr(obj, '__export_follow_rels__')):
+
+        if follow_rels and (isinstance(follow_rels, (list, tuple)) or hasattr(obj, '__export_follow_rels__') or \
+          (isinstance(follow_rels, dict) and obj.__class__.__name__ in follow_rels)):
             mapper = sqlalchemy.inspect(obj.__class__)
-            for relattr in (follow_rels if isinstance(follow_rels, (list, tuple)) else obj.__export_follow_rels__):
-                rel_follow_rels = True
+
+            if isinstance(follow_rels, dict):
+                obj_follow_rels = follow_rels[obj.__class__.__name__]
+            elif isinstance(follow_rels, (list, tuple)):
+                obj_follow_rels = follow_rels
+            else:
+                obj_follow_rels = obj.__export_follow_rels__
+
+            for relattr in obj_follow_rels:
+                rel_follow_rels = follow_rels if isinstance(follow_rels, dict) else True
                 if isinstance(relattr, tuple):
                     relattr, rel_follow_rels = relattr
                 attr = getattr(mapper.attrs, relattr, None)
@@ -50,6 +61,7 @@ class DatabaseDictSerializer(object):
                         data[attr.secondary.name].append({c.name: unicode(getattr(r, c.name)) for c in attr.secondary.columns})
                 elif not attr or attr.target.name not in ignore_tables:
                     self.dump(getattr(obj, relattr), data, attr.uselist if attr else True, ignore_tables, rel_follow_rels)
+
         return data
 
     def dump_many(self, objs, data=None, **kwargs):
