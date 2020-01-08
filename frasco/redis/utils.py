@@ -3,21 +3,29 @@ from frasco.utils import unknown_value
 import re
 import functools
 import inspect
+import logging
 
 
 __all__ = ('redis_get_set', 'redis_get_set_as_json', 'build_object_key', 'redis_cached_function', 'redis_cached_function_as_json')
 
 
-def redis_get_set(key, callback, ttl=None, coerce=None, serializer=None, redis=None):
+logger = logging.getLogger('frasco.redis')
+
+
+def redis_get_set(key, callback, ttl=None, coerce=None, serializer=None, redis=None, logging=False):
     if not redis:
         redis = current_app.extensions.frasco_redis.connection
     if redis.exists(key):
         value = redis.get(key)
+        if logging or (logging is None and current_app.debug):
+            logger.debug(u'CACHE HIT: %s' % key)
         if value == 'None':
             return None
         if coerce:
             return coerce(value)
         return value
+    if logging or (logging is None and current_app.debug):
+        logger.debug(u'CACHE MISS: %s' % key)
     _value = value = callback()
     if serializer:
         _value = serializer(value)
@@ -77,6 +85,7 @@ def build_object_key(obj=None, name=None, key=None, at_values=None, values=None,
 
 
 def redis_cached_function(key, **opts):
+    opts.setdefault('logging', None)
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
