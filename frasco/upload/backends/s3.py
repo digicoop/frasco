@@ -5,6 +5,7 @@ from frasco.upload.utils import save_uploaded_file_temporarly, generate_filename
 from frasco.tasks import enqueue_task
 import boto3
 import os
+import urllib
 
 
 AWS_CLIENT_OPTIONS = ('aws_access_key_id', 'aws_secret_access_key',
@@ -91,7 +92,11 @@ def _generate_object_headers(filename, mimetype=None, charset=None, content_disp
     if options['ignore_images_content_disposition_header'] and mimetype and mimetype.startswith('image/'):
         set_content_disposition = False
     if set_content_disposition:
-        headers['Content-Disposition'] = 'attachment;filename="%s"' % (content_disposition_filename or filename)
+        if not content_disposition_filename:
+            content_disposition_filename = filename
+        if isinstance(content_disposition_filename, unicode):
+            content_disposition_filename = content_disposition_filename.encode("utf-8")
+        headers['Content-Disposition'] = 'attachment;filename="%s"' % urllib.quote(content_disposition_filename)
 
     if mimetype:
         headers['Content-Type'] = mimetype
