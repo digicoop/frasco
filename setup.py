@@ -59,7 +59,7 @@ setup(
         'inflection',
         'geoip2',
         'redis',
-        'python-socketio~=4.3.1',
+        'python-socketio~=4.4.0',
         'eventlet',
         'authlib',
         'stripe',
