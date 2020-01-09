@@ -170,15 +170,15 @@ def signup():
                         flash(state.options['recaptcha_fail_message'], 'error')
                     raise UserValidationFailedError()
 
-            user = state.Model()
-            populate_obj(user, session.get("oauth_user_defaults", {}))
-            signup_user(user, provider=session.get('oauth_signup'), send_signal=False, **form.data)
-
-            if 'oauth_signup' in session:
-                user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
-            clear_oauth_signup_session()
-            db.session.flush()
             with transaction():
+                user = state.Model()
+                populate_obj(user, session.get("oauth_user_defaults", {}))
+                signup_user(user, provider=session.get('oauth_signup'), send_signal=False, **form.data)
+
+                if 'oauth_signup' in session:
+                    user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
+                clear_oauth_signup_session()
+                db.session.flush()
                 user_signed_up.send(user=user)
                 if state.options["login_user_on_signup"]:
                     login_user(user, provider=user.signup_provider)
@@ -198,20 +198,17 @@ def oauth_signup():
         oauth = 1 if state.options["oauth_must_signup"] else 0
         return redirect(url_for(".signup", oauth=oauth, next=request.args.get("next")))
 
-    user = state.Model()
-    populate_obj(user, session.get("oauth_user_defaults", {}))
-
     try:
-        signup_user(user, flash_messages=False, send_signal=False)
+        with transaction():
+            user = state.Model()
+            populate_obj(user, session.get("oauth_user_defaults", {}))
+            signup_user(user, flash_messages=False, send_signal=False)
+            user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
+            db.session.flush()
+            user_signed_up.send(user=user)
+            login_user(user, provider=session['oauth_signup'])
     except UserValidationFailedError:
-        db.session.rollback()
         return redirect(url_for(".signup", oauth=1, next=request.args.get("next")))
-
-    user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
-    db.session.flush()
-    with transaction():
-        user_signed_up.send(user=user)
-        login_user(user, provider=session['oauth_signup'])
 
     clear_oauth_signup_session()
     return redirect(request.args.get("next") or _make_redirect_url(state.options["redirect_after_login"]))
