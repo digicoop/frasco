@@ -55,7 +55,7 @@ def login():
                 flash(state.options['password_expired_message'], 'error')
                 return redirect(url_for('.reset_password', token=token))
 
-            if state.options['enable_2fa'] and user.otp_code:
+            if state.options['enable_2fa'] and user.two_factor_auth_enabled:
                 session['2fa'] = user.id
                 session['login_remember'] = form.remember.data
                 return redirect(url_for('.login_2fa'))
