@@ -6,16 +6,20 @@ from frasco.helpers import get_remote_addr
 import geoip2.database
 import os
 import logging
+import click
+import sys
 
 
-COUNTRY_DB_URL = "https://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.tar.gz"
-CITY_DB_URL = "https://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz"
+DOWNLOAD_URL = "https://download.maxmind.com/app/geoip_download_by_token"
+COUNTRY_EDITION = "GeoLite2-Country"
+CITY_EDITION = "GeoLite2-City"
 
 
 class FrascoGeoip(Extension):
     name = "frasco_geoip"
     defaults = {"use_city_db": True,
-                "db": "GeoLite2-City.mmdb"}
+                "db": "GeoLite2-City.mmdb",
+                "token": None}
 
     def _init_app(self, app, state):
         app.add_template_global(geolocate_country)
@@ -27,10 +31,21 @@ class FrascoGeoip(Extension):
             logging.getLogger('frasco.geoip').info('%s does not exists, geolocation is disabled' % state.options['db'])
 
         @app.cli.command('dl-geo-db')
-        def download_db():
-            """Download GeoLite2 database from MaxMind"""
+        @click.option('--edition')
+        @click.option('--suffix', default='tar.gz')
+        @click.option('--token')
+        def download_db(edition=None, suffix='tar.gz', token=None):
+            """Download GeoLite2 databases from MaxMind"""
+            if not token:
+                token = state.options['token']
+            if not token:
+                click.echo("You must register on MaxMind to obtain a token in order to download databases")
+                sys.exit(1)
             tmpfilename = "/tmp/GeoLite2.tar.gz"
-            shell_exec(["wget", "-O", tmpfilename, CITY_DB_URL if state.options["use_city_db"] else COUNTRY_DB_URL])
+            if not edition:
+                edition = CITY_EDITION if state.options["use_city_db"] else COUNTRY_EDITION
+            url = "%s?edition_id=%s&suffix=%s&token=%s" % (DOWNLOAD_URL, edition, suffix, token)
+            shell_exec(["wget", "-O", tmpfilename, url])
             dbfilename = shell_exec(["tar", "tzf", tmpfilename, "--no-anchored", state.options['db']], echo=False).strip()
             shell_exec(["tar", "-C", "/tmp", "-xzf", tmpfilename, dbfilename])
             shell_exec(["mv", os.path.join("/tmp", dbfilename), state.options['db']])
