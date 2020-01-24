@@ -10,7 +10,7 @@ import click
 import sys
 
 
-DOWNLOAD_URL = "https://download.maxmind.com/app/geoip_download_by_token"
+DOWNLOAD_URL = "https://download.maxmind.com/app/geoip_download"
 COUNTRY_EDITION = "GeoLite2-Country"
 CITY_EDITION = "GeoLite2-City"
 
@@ -19,7 +19,7 @@ class FrascoGeoip(Extension):
     name = "frasco_geoip"
     defaults = {"use_city_db": True,
                 "db": "GeoLite2-City.mmdb",
-                "token": None}
+                "license_key": None}
 
     def _init_app(self, app, state):
         app.add_template_global(geolocate_country)
@@ -33,18 +33,18 @@ class FrascoGeoip(Extension):
         @app.cli.command('dl-geo-db')
         @click.option('--edition')
         @click.option('--suffix', default='tar.gz')
-        @click.option('--token')
-        def download_db(edition=None, suffix='tar.gz', token=None):
+        @click.option('--license-key')
+        def download_db(edition=None, suffix='tar.gz', license_key=None):
             """Download GeoLite2 databases from MaxMind"""
-            if not token:
-                token = state.options['token']
-            if not token:
-                click.echo("You must register on MaxMind to obtain a token in order to download databases")
+            if not license_key:
+                license_key = state.options['license_key']
+            if not license_key:
+                click.echo("You must register on MaxMind to obtain a license key in order to download databases")
                 sys.exit(1)
             tmpfilename = "/tmp/GeoLite2.tar.gz"
             if not edition:
                 edition = CITY_EDITION if state.options["use_city_db"] else COUNTRY_EDITION
-            url = "%s?edition_id=%s&suffix=%s&token=%s" % (DOWNLOAD_URL, edition, suffix, token)
+            url = "%s?edition_id=%s&suffix=%s&license_key=%s" % (DOWNLOAD_URL, edition, suffix, license_key)
             shell_exec(["wget", "-O", tmpfilename, url])
             dbfilename = shell_exec(["tar", "tzf", tmpfilename, "--no-anchored", state.options['db']], echo=False).strip()
             shell_exec(["tar", "-C", "/tmp", "-xzf", tmpfilename, dbfilename])
