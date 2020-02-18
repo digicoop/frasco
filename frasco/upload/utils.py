@@ -1,5 +1,6 @@
 import mimetypes
-from werkzeug import FileStorage, secure_filename as wz_secure_filename
+from werkzeug.datastructures import FileStorage
+from werkzeug.utils import secure_filename as wz_secure_filename
 from StringIO import StringIO
 from frasco.ext import get_extension_state
 from tempfile import NamedTemporaryFile, gettempdir

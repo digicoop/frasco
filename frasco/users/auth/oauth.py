@@ -6,7 +6,7 @@ from frasco.models import db
 from frasco.utils import populate_obj
 from frasco.tasks import get_current_job
 from frasco.redis.objects import JSONRedisHash
-from authlib.flask.client import OAuth
+from authlib.integrations.flask_client import OAuth
 from sqlalchemy.dialects import postgresql
 import datetime
 import uuid

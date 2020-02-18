@@ -2,7 +2,7 @@ from frasco.ext import *
 from frasco.utils import import_class
 from flask import send_from_directory
 from flask.wrappers import Request
-from werkzeug import FileStorage
+from werkzeug.datastructures import FileStorage
 from io import BytesIO
 from tempfile import TemporaryFile
 import uuid

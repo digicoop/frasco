@@ -1,6 +1,6 @@
 from wtforms import FileField as BaseFileField, ValidationError
 from flask_wtf.file import FileRequired
-from werkzeug import FileStorage
+from werkzeug.datastructures import FileStorage
 from frasco.ext import get_extension_state
 import os
 import uuid
