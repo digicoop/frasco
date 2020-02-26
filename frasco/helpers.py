@@ -33,7 +33,7 @@ def wrap_in_markup(f):
 
 
 def inject_app_config(app, config, prefix=None):
-    for k, v in config.iteritems():
+    for k, v in config.items():
         if prefix:
             k = "%s%s" % (prefix, k)
         app.config[k.upper()] = v

@@ -29,7 +29,7 @@ class FrascoStripe(Extension):
                 "no_payment_redirect_to": None,
                 "no_payment_message": None,
                 "subscription_past_due_message": lazy_translate(
-                    u"We attempted to charge your credit card for your subscription but it failed."
+                    "We attempted to charge your credit card for your subscription but it failed."
                     "Please check your credit card details"),
                 "debug_trial_period": None,
                 "send_trial_will_end_email": True,

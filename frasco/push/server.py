@@ -1,7 +1,7 @@
 import socketio
 from socketio.exceptions import ConnectionRefusedError
 import os
-import urlparse
+import urllib.parse
 import uuid
 import json
 from itsdangerous import URLSafeTimedSerializer, BadSignature
@@ -86,7 +86,7 @@ def create_app(redis_url='redis://', channel='socketio', secret=None, presence_s
         if not secret:
             raise ConnectionRefusedError('no secret defined')
 
-        qs = urlparse.parse_qs(env['QUERY_STRING'])
+        qs = urllib.parse.parse_qs(env['QUERY_STRING'])
         if not 'token' in qs:
             raise ConnectionRefusedError('missing token')
 

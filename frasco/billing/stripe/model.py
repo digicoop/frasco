@@ -4,7 +4,7 @@ from frasco.ext import get_extension_state
 from frasco.utils import cached_property
 from sqlalchemy.ext.declarative import declared_attr
 import stripe
-import signals
+from . import signals
 import datetime
 import time
 import logging
@@ -51,25 +51,25 @@ class StripeModelMixin(object):
             kwargs.setdefault('invoice_settings', {})['default_payment_method'] = kwargs['payment_method']
         customer = stripe.Customer.create(**kwargs)
         self._update_stripe_customer(customer)
-        logger.info(u'Customer %s for model #%s created' % (customer.id, self.id))
+        logger.info('Customer %s for model #%s created' % (customer.id, self.id))
         return customer
 
     def update_stripe_customer(self, **kwargs):
         customer = self.stripe_customer
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             setattr(customer, k, v)
         customer.save()
         self._update_stripe_customer(customer)
-        logger.info(u'Customer %s updated' % self.stripe_customer_id)
+        logger.info('Customer %s updated' % self.stripe_customer_id)
 
     def delete_stripe_customer(self):
         if self.stripe_customer_id:
             try:
                 self.stripe_customer.delete()
-                logger.info(u'Customer %s deleted' % self.stripe_customer_id)
+                logger.info('Customer %s deleted' % self.stripe_customer_id)
             except stripe.error.InvalidRequestError as e:
-                if u'No such customer' not in unicode(e):
-                    logger.warning(u"Customer %s that was to be deleted didn't exist anymore in Stripe" % self.stripe_customer_id)
+                if 'No such customer' not in str(e):
+                    logger.warning("Customer %s that was to be deleted didn't exist anymore in Stripe" % self.stripe_customer_id)
                     raise
         self._update_stripe_customer(False)
 
@@ -211,7 +211,7 @@ class StripeSubscriptionModelMixin(StripeModelMixin):
         subscription = stripe.Subscription.create(customer=self.stripe_customer_id, items=[item],
             trial_end=_format_trial_end(trial_end), **kwargs)
         self._update_stripe_subscription(subscription)
-        logger.info(u'Subscribed customer %s to plan %s' % (self.stripe_customer_id, plan))
+        logger.info('Subscribed customer %s to plan %s' % (self.stripe_customer_id, plan))
         return subscription
 
     def update_stripe_subscription(self, **kwargs):
@@ -222,7 +222,7 @@ class StripeSubscriptionModelMixin(StripeModelMixin):
             kwargs['trial_end'] = _format_trial_end(kwargs['trial_end'])
         subscription = stripe.Subscription.modify(self.stripe_subscription_id, **kwargs)
         self._update_stripe_subscription(subscription)
-        logger.info(u'Subscription %s updated for %s' % (self.stripe_subscription_id, self.stripe_customer_id))
+        logger.info('Subscription %s updated for %s' % (self.stripe_subscription_id, self.stripe_customer_id))
 
     def update_stripe_subscription_item(self, subscription_options=None, **kwargs):
         if not subscription_options:
@@ -244,11 +244,11 @@ class StripeSubscriptionModelMixin(StripeModelMixin):
         else:
             self.stripe_subscription.delete()
             self._update_stripe_subscription(False)
-        logger.info(u'Subscription %s cancelled for %s' % (self.stripe_subscription_id, self.stripe_customer_id))
+        logger.info('Subscription %s cancelled for %s' % (self.stripe_subscription_id, self.stripe_customer_id))
 
     def revert_stripe_subscription_period_end_cancellation(self):
         self.update_stripe_subscription(cancel_at_period_end=False)
-        logger.info(u'Subscription %s reverted cancellation for %s' % (self.stripe_subscription_id, self.stripe_customer_id))
+        logger.info('Subscription %s reverted cancellation for %s' % (self.stripe_subscription_id, self.stripe_customer_id))
 
     def _update_stripe_customer(self, customer=None):
         super(StripeSubscriptionModelMixin, self)._update_stripe_customer(customer)

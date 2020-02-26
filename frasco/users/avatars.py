@@ -5,7 +5,7 @@ from frasco.utils import slugify
 from flask import current_app, request
 import sqlalchemy as sqla
 import hashlib
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import math
 import random
 import base64
@@ -80,16 +80,12 @@ def url_for_avatar(user):
     hash = None
     username = getattr(user, state.options["flavatar_name_column"] or 'username', None)
     if username:
-        if isinstance(username, unicode):
-            username = username.encode('utf-8')
-        username = slugify(username.lower())
-        hash = hashlib.md5(username).hexdigest()
+        username = slugify(str(username).lower())
+        hash = hashlib.md5(username.encode('utf-8')).hexdigest()
 
     email = getattr(user, state.options["gravatar_email_column"] or 'email', None)
     if email:
-        if isinstance(email, unicode):
-            email = email.encode('utf-8')
-        hash = hashlib.md5(email.lower()).hexdigest()
+        hash = hashlib.md5(email.lower().encode('utf-8')).hexdigest()
         if not username:
             username = slugify(email.split('@')[0])
 
@@ -106,12 +102,12 @@ def url_for_avatar(user):
 
 def url_for_gravatar(email, size=None, default=None):
     state = get_extension_state('frasco_users_avatars')
-    hash = hashlib.md5(email.lower()).hexdigest()
+    hash = hashlib.md5(email.lower().encode('utf-8')).hexdigest()
     params = {
         's': size or state.options['gravatar_size'] or state.options["avatar_size"],
         'd': default or state.options['gravatar_default']
     }
-    return "https://www.gravatar.com/avatar/%s?%s" % (hash, urllib.urlencode({k: v for k, v in params.items() if v is not None}))
+    return "https://www.gravatar.com/avatar/%s?%s" % (hash, urllib.parse.urlencode({k: v for k, v in params.items() if v is not None}))
 
 
 def generate_first_letter_avatar_svg(name, bgcolorstr=None, size=None):

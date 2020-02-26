@@ -2,7 +2,7 @@ from flask import has_app_context, current_app, has_request_context, session, re
 from frasco.users import user_login_context, is_user_logged_in, current_user
 from frasco.utils import import_string
 from flask_rq2.job import FlaskJob
-from rq.job import unpickle, UNEVALUATED, dumps, Job as RQJob
+from rq.job import UNEVALUATED, dumps, Job as RQJob
 
 
 def pack_task_args(data):
@@ -20,7 +20,7 @@ def pack_task_args(data):
         return lst
     if isinstance(data, dict):
         dct = {}
-        for k, v in data.iteritems():
+        for k, v in data.items():
             dct[k] = pack_task_args(v)
         return dct
     return data
@@ -41,7 +41,7 @@ def unpack_task_args(data):
             return cls.__taskload__(data["$taskobj"][1])
         else:
             dct = {}
-            for k, v in data.iteritems():
+            for k, v in data.items():
                 dct[k] = unpack_task_args(v)
             return dct
     return data
@@ -61,8 +61,8 @@ class FrascoJob(FlaskJob):
             })
         return job
 
-    def _unpickle_data(self):
-        self._func_name, self._instance, self._args, self._kwargs = unpickle(self.data)
+    def _deserialize_data(self):
+        self._func_name, self._instance, self._args, self._kwargs = self.serializer.loads(self.data)
         self._args = unpack_task_args(self._args)
         self._kwargs = unpack_task_args(self._kwargs)
 

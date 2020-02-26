@@ -5,7 +5,7 @@ from frasco.upload.utils import save_uploaded_file_temporarly, generate_filename
 from frasco.tasks import enqueue_task
 import boto3
 import os
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 
 AWS_CLIENT_OPTIONS = ('aws_access_key_id', 'aws_secret_access_key',
@@ -94,9 +94,9 @@ def _generate_object_headers(filename, mimetype=None, charset=None, content_disp
     if set_content_disposition:
         if not content_disposition_filename:
             content_disposition_filename = filename
-        if isinstance(content_disposition_filename, unicode):
+        if isinstance(content_disposition_filename, str):
             content_disposition_filename = content_disposition_filename.encode("utf-8")
-        headers['Content-Disposition'] = 'attachment;filename="%s"' % urllib.quote(content_disposition_filename)
+        headers['Content-Disposition'] = 'attachment;filename="%s"' % urllib.parse.quote(content_disposition_filename)
 
     if mimetype:
         headers['Content-Type'] = mimetype
@@ -121,9 +121,9 @@ def upload_file_to_s3(stream_or_filename, filename, bucket=None, prefix=None,
         extra_args['ACL'] = acl
 
     extra_args.update({k.replace('-', ''): v for k, v in \
-        _generate_object_headers(filename, backend=backend, **object_headers_options).items()})
+        list(_generate_object_headers(filename, backend=backend, **object_headers_options).items())})
 
-    is_filename = isinstance(stream_or_filename, (str, unicode))
+    is_filename = isinstance(stream_or_filename, str)
     if is_filename:
         client.upload_file(stream_or_filename, bucket, object_name, ExtraArgs=extra_args)
     else:

@@ -15,7 +15,7 @@ def wrap_service_func_for_endpoint(func):
         try:
             rv = func(*args, **kwargs)
         except ApiError as e:
-            return make_response(json.dumps({"error": unicode(e)}), e.http_code)
+            return make_response(json.dumps({"error": str(e)}), e.http_code)
         if isinstance(rv, Response):
             return rv
         return json.dumps(rv), {'Content-Type': 'application/json;charset=UTF-8'}

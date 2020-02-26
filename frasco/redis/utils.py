@@ -18,14 +18,14 @@ def redis_get_set(key, callback, ttl=None, coerce=None, serializer=None, redis=N
     value = redis.get(key)
     if value is not None:
         if logging or (logging is None and current_app.debug):
-            logger.debug(u'CACHE HIT: %s' % key)
+            logger.debug('CACHE HIT: %s' % key)
         if value == 'None':
             return None
         if coerce:
             return coerce(value)
         return value
     if logging or (logging is None and current_app.debug):
-        logger.debug(u'CACHE MISS: %s' % key)
+        logger.debug('CACHE MISS: %s' % key)
     _value = value = callback()
     if serializer:
         _value = serializer(value)

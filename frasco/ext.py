@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 from flask import current_app, has_app_context
 from frasco.utils import (AttrDict, import_string, find_classes_in_module, extract_unmatched_items,
                           import_string, import_class, deep_update_dict)
@@ -143,13 +143,13 @@ def has_extension(name, app=None):
 def load_extensions_from_config(app, key='EXTENSIONS'):
     loaded = []
     for spec in app.config.get(key, []):
-        if isinstance(spec, (str, unicode)):
+        if isinstance(spec, str):
             ext_module = spec
             options = {}
         elif isinstance(spec, (tuple, list)):
             ext_module, options = spec
         elif isinstance(spec, dict):
-            ext_module, options = spec.items()[0]
+            ext_module, options = next(x for x in spec.items())
         ext_class = import_class(ext_module, Extension)
         loaded.append(ext_class(app, **options))
         logging.getLogger('frasco').info("Extension '%s.%s' loaded" % (ext_class.__module__, ext_class.__name__))

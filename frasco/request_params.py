@@ -117,7 +117,7 @@ class RequestParam(object):
         return self.dest
 
     def _abort(self, message, code=400):
-        abort(code, u"%s: %s" % (", ".join(self.names), message))
+        abort(code, "%s: %s" % (", ".join(self.names), message))
 
     def process(self, request_data=None):
         try:
@@ -151,7 +151,7 @@ class RequestParam(object):
                 raise MissingRequestParam()
             if type and value is not None:
                 if self.aslist and self.aslist_iter_coerce:
-                    value = map(lambda v: self.coerce(v, type), value)
+                    value = [self.coerce(v, type) for v in value]
                 else:
                     value = self.coerce(value, type)
             values.append(value)
@@ -168,11 +168,11 @@ class RequestParam(object):
                 if schema:
                     return schema.load(value)
             except MarshmallowValidationError as e:
-                self._abort("\n - " + "\n - ".join(u"%s: %s" % i for i in e.normalized_messages().items()))
+                self._abort("\n - " + "\n - ".join("%s: %s" % i for i in e.normalized_messages().items()))
 
         try:
             if type is bool:
-                if isinstance(value, (str, unicode)):
+                if isinstance(value, str):
                     return value.lower() not in ('False', 'false', 'no', '0')
                 return bool(value)
             return type(value)
@@ -256,7 +256,7 @@ def partial_request_param_loader(name=None, type=None, **kwargs):
 
 def _dict_to_request_params(params_dict, cls=RequestParam):
     params = []
-    for name, kwargs in params_dict.iteritems():
+    for name, kwargs in params_dict.items():
         if isinstance(kwargs, cls):
             params.append(kwargs)
             continue

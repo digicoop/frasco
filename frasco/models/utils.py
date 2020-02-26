@@ -119,7 +119,7 @@ def extract_model_attr_to_col_mapping(model):
 
 def model_obj_to_dict(obj, value_serializer=None):
     row = {}
-    for attr, col in extract_model_attr_to_col_mapping(obj.__class__).iteritems():
+    for attr, col in extract_model_attr_to_col_mapping(obj.__class__).items():
         row[col] = (value_serializer or (lambda a: a))(getattr(obj, attr))
     return row
 

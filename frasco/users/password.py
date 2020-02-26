@@ -23,7 +23,7 @@ def generate_random_password():
 
 
 def hash_password(password):
-    return bcrypt.generate_password_hash(password)
+    return bcrypt.generate_password_hash(password).decode('utf-8')
 
 
 def check_password(user, password):
@@ -41,7 +41,7 @@ class PasswordValidationFailedError(Exception):
         self.reason = reason
         self.rule = rule
 
-    def __unicode__(self):
+    def __str__(self):
         return self.reason
 
 

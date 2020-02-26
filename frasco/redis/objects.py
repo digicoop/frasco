@@ -76,14 +76,14 @@ class RedisHash(RedisObject):
         return self.redis.hkeys(self.key)
 
     def items(self):
-        return {k: self._from_redis(v) for k, v in self.redis.hgetall(self.key).iteritems()}
+        return {k: self._from_redis(v) for k, v in self.redis.hgetall(self.key).items()}
 
     def values(self):
-        return self.items().values()
+        return list(self.items().values())
 
     def update(self, dct):
         pipe = self.redis.pipeline()
-        for k, v in dct.iteritems():
+        for k, v in dct.items():
             pipe.hset(self.key, k, self._to_redis(v))
         pipe.execute()
 
@@ -101,7 +101,7 @@ class RedisList(RedisObject):
     def __getitem__(self, index):
         if isinstance(index, slice):
             if slice.step is not None:
-                return [self[i] for i in xrange(*index.indices(len(self)))]
+                return [self[i] for i in range(*index.indices(len(self)))]
             return [self._from_redis(v) for v in \
                 self.redis.lrange(self.key, slice.start or 0, slice.stop or -1)]
         elif isinstance(index, int):

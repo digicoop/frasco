@@ -42,10 +42,10 @@ class FrascoPush(Extension):
 
     def _init_app(self, app, state):
         expose_package(app, "frasco_push", __name__)
-        
+
         if state.options['secret'] is None:
             state.options["secret"] = app.config['SECRET_KEY']
-        
+
         if not state.options['redis_url'] and has_extension('frasco_redis', app):
             state.options['redis_url'] = app.extensions.frasco_redis.options['url']
 
@@ -151,7 +151,7 @@ def get_user_room_name(user_id):
     state = get_extension_state('frasco_push')
     if not state.options['secret']:
         raise Exception('A secret must be set to use emit_direct()')
-    return hashlib.sha1(str(user_id) + state.options['secret']).hexdigest()
+    return hashlib.sha1((str(user_id) + state.options['secret']).encode('utf-8')).hexdigest()
 
 
 def format_emit_data(event, data, namespace=None, room=None, skip_sid=None):

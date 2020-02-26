@@ -70,7 +70,7 @@ def marshal_dict_with(**mapping):
             if disable_marshaller.top:
                 return data
             out = {}
-            for k, v in data.iteritems():
+            for k, v in data.items():
                 if k in mapping:
                     out[k] = marshal(v, mapping[k], func=func, args=args, kwargs=kwargs)
                 else:

@@ -40,7 +40,7 @@ def jinja_fragment_extension(tag, endtag=None, name=None, tag_only=False, allow_
 
     def decorator(f):
         def parse(self, parser):
-            lineno = parser.stream.next().lineno
+            lineno = parser.stream.__next__().lineno
             args = []
             kwargs = []
             if allow_args:
@@ -69,7 +69,7 @@ def jinja_fragment_extension(tag, endtag=None, name=None, tag_only=False, allow_
 
 class BaseJinjaBlockAsFragmentExtension(Extension):
     def parse(self, parser):
-        lineno = parser.stream.next().lineno
+        lineno = parser.stream.__next__().lineno
         body = parser.parse_statements(['name:' + self.end_tag], drop_needle=True)
         return nodes.Block(self.block_name, body, False, lineno=lineno)
 

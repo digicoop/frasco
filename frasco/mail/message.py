@@ -148,17 +148,17 @@ def log_message(message, dump_dir=None):
         getattr(message, 'template', '[no template]'), message.recipients, message.sender, message.subject))
     if dump_dir:
         if not os.path.exists(dump_dir):
-            os.mkdir(dump_dir, 0777)
+            os.mkdir(dump_dir, 0o777)
         filename = os.path.join(dump_dir, "-".join([
             datetime.datetime.now().isoformat("-"),
             os.path.splitext(getattr(message, 'template', ''))[0].replace("/", "_"),
                 "-".join(message.recipients)]))
         if message.body:
             with open(filename + ".txt", "w") as f:
-                f.write(message.body.encode('utf-8'))
+                f.write(message.body)
         if message.html:
             with open(filename + ".html", "w") as f:
-                f.write(message.html.encode('utf-8'))
+                f.write(message.html)
 
 
 _url_regexp = re.compile(r'(http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)')

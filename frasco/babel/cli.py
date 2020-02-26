@@ -73,9 +73,9 @@ def update_translations(extract=True, gotrans=False):
         _extract()
     click.echo("Updating all translations")
     shell_exec([state.options["babel_bin"], "update", "-i", potfile, "-d", path])
-    for f in os.listdir(path):
-        if os.path.isdir(os.path.join(path, f)):
-            translation_updated.send(locale=f)
+    for entry in os.scandir(path):
+        if entry.is_dir():
+            translation_updated.send(locale=entry.name)
             if gotrans:
                 translate_with_google(f)
 
@@ -88,14 +88,14 @@ def compile_translations():
     shell_exec([state.options["babel_bin"], "compile", "-d", path])
     if state.options['compile_to_json']:
         output = os.path.join(current_app.static_folder, state.options['compile_to_json'])
-        for f in os.listdir(path):
-            if os.path.isdir(os.path.join(path, f)):
-                _po2json(f, output % f)
+        for entry in os.scandir(path):
+            if entry.is_dir():
+                _po2json(entry.name, output % entry.name)
     if state.options['compile_to_js']:
         output = os.path.join(current_app.static_folder, state.options['compile_to_js'])
-        for f in os.listdir(path):
-            if os.path.isdir(os.path.join(path, f)):
-                _po2js(f, output % f)
+        for entry in os.scandir(path):
+            if entry.is_dir():
+                _po2js(entry.name, output % entry.name)
     translation_compiled.send()
 
 
@@ -141,7 +141,7 @@ def translate_with_google(locale):
     click.echo("Google translating '%s'" % locale)
     click.echo("WARNING: you must go through the translation after the process as placeholders may have been modified", fg="red")
     filename = os.path.join(current_app.root_path, "translations", locale, "LC_MESSAGES", "messages.po")
-    
+
     def translate(id):
         # google translate messes with the format placeholders thus
         # we replace them with something which is easily recoverable

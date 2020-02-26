@@ -32,7 +32,7 @@ def build_swagger_spec(api_version, with_security_scheme=False):
                 op = build_spec_operation(rule, service.name + '_' + endpoint, func, options, with_security_scheme)
                 op['tags'] = [service.name]
                 path[method.lower()] = op
-        for path, operations in paths.iteritems():
+        for path, operations in paths.items():
             spec.path(path=path, operations=operations)
 
     return spec

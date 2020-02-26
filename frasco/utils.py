@@ -125,7 +125,7 @@ def parse_yaml_frontmatter(source):
 def populate_obj(obj, attrs):
     """Populates an object's attributes using the provided dict
     """
-    for k, v in attrs.iteritems():
+    for k, v in attrs.items():
         setattr(obj, k, v)
 
 
@@ -153,7 +153,7 @@ def kwarg_validator(name):
 
 def extract_unmatched_items(items, allowed_keys, prefix=None, uppercase=False):
     unmatched = {}
-    for k, v in items.iteritems():
+    for k, v in items.items():
         if k not in allowed_keys:
             if prefix:
                 k = "%s%s" % (prefix, k)
@@ -164,7 +164,7 @@ def extract_unmatched_items(items, allowed_keys, prefix=None, uppercase=False):
 
 
 def deep_update_dict(a, b):
-    for k, v in b.iteritems():
+    for k, v in b.items():
         if k not in a:
             a[k] = v
         elif isinstance(a[k], dict) and isinstance(v, dict):
@@ -188,6 +188,8 @@ class AttrDict(dict):
     """Dict which keys are accessible as attributes
     """
     def __getattr__(self, name):
+        if name not in self:
+            raise AttributeError()
         return self[name]
 
     def __setattr__(self, name, value):
@@ -212,20 +214,17 @@ class ShellError(Exception):
         self.returncode = returncode
         self.stderr = stderr
 
-    def __unicode__(self):
-        return unicode(self.stderr)
+    def __str__(self):
+        return str(self.stderr)
 
 
 def shell_exec(args, echo=True, fg="green", **kwargs):
-    kwargs["stdout"] = subprocess.PIPE
-    kwargs["stderr"] = subprocess.STDOUT
-    p = subprocess.Popen(args, **kwargs)
-    out, _ = p.communicate()
+    p = subprocess.run(args, stderr=subprocess.STDOUT, **kwargs)
     if p.returncode > 0:
         raise ShellError(p.returncode, out)
     if echo:
-        click.secho(out, fg=fg)
-    return out
+        click.secho(p.stdout, fg=fg)
+    return p.stdout
 
 
 def match_domains(domain, allowed_domains):

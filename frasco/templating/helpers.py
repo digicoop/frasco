@@ -23,7 +23,7 @@ def html_attributes(attrs=None, **kwargs):
         if isinstance(v, bool):
             v = k if v else ""
         k = k.replace("_", "-")
-        html.append(u'%s="%s"' % (k, unicode(v).strip()))
+        html.append('%s="%s"' % (k, str(v).strip()))
     return Markup(" ".join(html))
 
 
@@ -31,7 +31,7 @@ _paragraph_re = re.compile(r'(?:\r\n|\r(?!\n)|\n){2,}')
 
 @evalcontextfilter
 def nl2br(eval_ctx, value):
-    result = u'\n\n'.join(u'<p>%s</p>' % p.replace(u'\n', Markup('<br>\n'))
+    result = '\n\n'.join('<p>%s</p>' % p.replace('\n', Markup('<br>\n'))
                                          for p in _paragraph_re.split(value))
     if eval_ctx.autoescape:
         result = Markup(result)

@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 from flask import json
 from flask.config import Config as FlaskConfig
 from frasco.utils import deep_update_dict
@@ -45,7 +45,7 @@ class Config(FlaskConfig):
         mappings = []
         if len(mapping) == 1:
             if hasattr(mapping[0], 'items'):
-                mappings.append(mapping[0].items())
+                mappings.append(list(mapping[0].items()))
             else:
                 mappings.append(mapping[0])
         elif len(mapping) > 1:
@@ -53,7 +53,7 @@ class Config(FlaskConfig):
                 'expected at most 1 positional argument, got %d' % len(mapping)
             )
         deep_update = kwargs.pop('_deep_update', False)
-        mappings.append(kwargs.items())
+        mappings.append(list(kwargs.items()))
         for mapping in mappings:
             if deep_update:
                 deep_update_dict(self, dict((k.upper(), v) for (k, v) in mapping))
@@ -89,7 +89,7 @@ def load_config(app, config_filename='config.yml', env=None, deep_update=False):
 def update_config_with_env_vars(app, prefix):
     config = {}
     prefix = prefix.upper()
-    for k, v in os.environ.iteritems():
+    for k, v in os.environ.items():
         if k.startswith(prefix + "_"):
             config[k[len(prefix)+1:]] = v
     if config:

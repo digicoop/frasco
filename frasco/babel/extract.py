@@ -38,7 +38,7 @@ def create_babel_mapping(jinja_dirs=None, jinja_exts=None, extractors=None):
     if extractors:
         for extractor, settings in extractors:
             conf += "[%s]\n" % extractor
-            for k, v in settings.iteritems():
+            for k, v in settings.items():
                 conf += "%s = %s\n" % (k, v)
     return conf
 
@@ -50,8 +50,8 @@ def exec_babel_extract(path, potfile, mapping=None, keywords=None):
         mapping_file.write(mapping)
         mapping_file.flush()
 
-    if isinstance(keywords, (str, unicode)):
-        keywords = map(str.strip, str(keywords).split(";"))
+    if isinstance(keywords, str):
+        keywords = list(map(str.strip, str(keywords).split(";")))
     elif not keywords:
         keywords = []
     keywords.extend(["_n:1,2", "translatable", "translate", "ntranslate",

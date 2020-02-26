@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='1.11.6',
+    version='2.0.0',
     url='http://github.com/digicoop/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -50,8 +50,8 @@ setup(
         'goslate~=1.5.1',
         'htmlmin~=0.1.12',
         'inflection~=0.3.1',
-        'jinja-layout~=0.1',
-        'jinja-macro-tags~=0.1',
+        'jinja-layout @ git+https://github.com/sebu77/jinja-layout#egg=jinja-layout-0.2',
+        'jinja-macro-tags @ git+https://github.com/sebu77/jinja-macro-tags#egg=jinja-macro-tags-0.2',
         'jsmin~=2.2.2',
         'Markdown~=3.1.1',
         'premailer~=3.6.1',
@@ -64,9 +64,9 @@ setup(
         'redis~=3.4.1',
         'requests~=2.22.0',
         'simplejson~=3.17.0',
+        'suds-py3~=1.4.1.0',
         'speaklater~=1.3',
         'stripe~=2.42.0',
-        'suds==0.4',
         'werkzeug>=1.0.0',
     ],
     entry_points='''

@@ -4,8 +4,8 @@ class ApiError(Exception):
         self.message = message
         self.http_code = http_code
 
-    def __unicode__(self):
-        return unicode(self.message)
+    def __str__(self):
+        return str(self.message)
 
 
 class ApiInputError(ApiError):

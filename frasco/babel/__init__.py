@@ -30,7 +30,7 @@ class FrascoBabel(Extension):
                 "default_locale": "en",
                 "currencies": ["USD"],
                 "default_currency": "USD",
-                "currency_name_format": u"{name} ({symbol})",
+                "currency_name_format": "{name} ({symbol})",
                 "store_locale_in_session": True,
                 "store_locale_in_user": False,
                 "user_locale_column": "locale",

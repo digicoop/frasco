@@ -97,9 +97,10 @@ class FrascoAngular(Extension):
 
         disable = state.options["disable_templates_cache"]
         if (disable is None and not self.get_app().debug) or disable is False:
-            for path, dirnames, filenames in os.walk(os.path.join(state.options["static_dir"], state.options['app_dir'])):
-                for filename in filenames:
-                    process_file(filename, path)
+            path = os.path.join(state.options["static_dir"], state.options['app_dir'])
+            for entry in os.scandir(path):
+                if entry.is_file():
+                    process_file(entry.name, path)
 
         module = "\n".join(module) + "\n}]);"
         filename = os.path.join(state.options["static_dir"], state.options["app_dir"], state.options['templates_file'])

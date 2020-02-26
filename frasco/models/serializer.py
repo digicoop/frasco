@@ -16,7 +16,7 @@ class DatabaseDictSerializer(object):
     @classmethod
     def merge_idmaps(cls, idmap1, *idmaps):
         for idmap in idmaps:
-            for table, rows in idmap1.iteritems():
+            for table, rows in idmap1.items():
                 rows.extend(idmap.get(table, []))
         return idmap1
 
@@ -58,7 +58,7 @@ class DatabaseDictSerializer(object):
                 if attr and attr.secondary is not None:
                     data.setdefault(attr.secondary.name, [])
                     for r in db.session.query(attr.secondary).filter(attr.synchronize_pairs[0][1] == getattr(obj, attr.synchronize_pairs[0][0].name)):
-                        data[attr.secondary.name].append({c.name: unicode(getattr(r, c.name)) for c in attr.secondary.columns})
+                        data[attr.secondary.name].append({c.name: str(getattr(r, c.name)) for c in attr.secondary.columns})
                 elif not attr or attr.target.name not in ignore_tables:
                     self.dump(getattr(obj, relattr), data, attr.uselist if attr else True, ignore_tables, rel_follow_rels)
 
@@ -102,13 +102,13 @@ class DatabaseDictSerializer(object):
                           + [(table.name, table) for table in all_tables.values() \
                                 if len(self._get_foreign_cols(table)) > 0 or 'id' not in table.c])
 
-        return pre_insert_tables, tables_need_remap.values()
+        return pre_insert_tables, list(tables_need_remap.values())
 
     def _get_table(self, name):
         return db.Model.metadata.tables[name]
 
     def _get_foreign_cols(self, table):
-        return map(lambda col: col.name, filter(lambda col: col.foreign_keys, table.c))
+        return [col.name for col in [col for col in table.c if col.foreign_keys]]
 
     def _validate_data(self, table, data):
         data = {k: v for k, v in data.items() if k in table.c}
@@ -125,7 +125,7 @@ class DatabaseDictSerializer(object):
         return self._ensure_data_has_no_unique_conflict(table, data)
 
     def _ensure_data_has_no_unique_conflict(self, table, data):
-        for col in filter(lambda c: c.unique, table.c):
+        for col in [c for c in table.c if c.unique]:
             if not data.get(col.name):
                 continue
             value = data[col.name]
@@ -155,7 +155,7 @@ class DatabaseDictSerializer(object):
             return newid
 
     def remap(self, table, row, idmap):
-        if isinstance(table, (str, unicode)):
+        if isinstance(table, str):
             table = self._get_table(table)
         fks = self._get_foreign_cols(table)
         alread_inserted = 'id' in row and int(row['id']) in idmap.get(table.name, {})

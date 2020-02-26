@@ -6,7 +6,7 @@ import os
 from ..helpers import url_for, url_for_static, url_for_same
 from ..utils import slugify
 from .extensions import *
-from helpers import *
+from .helpers import *
 
 
 def configure_environment(env):

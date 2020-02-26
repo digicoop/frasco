@@ -65,7 +65,7 @@ class OAuthUserModelMixin(object):
     @classmethod
     def query_by_oauth_token(cls, provider, id_property, id_value):
         return cls.query.join(cls.__oauth_token_model__).filter(
-            cls.__oauth_token_model__.data[id_property].astext == unicode(id_value)).first()
+            cls.__oauth_token_model__.data[id_property].astext == str(id_value)).first()
 
     def get_oauth_token(self, provider):
         return self.oauth_tokens.filter(self.__oauth_token_model__.provider == provider).first()
