@@ -16,6 +16,7 @@ import click
 
 
 suppress_push_events = ContextStack(False, default_item=True, ignore_nested=True)
+testing_push_events = ContextStack(None, list, ignore_nested=True)
 dont_skip_self_push_events = ContextStack(False, default_item=True, ignore_nested=True)
 logger = logging.getLogger('frasco.push')
 
@@ -36,7 +37,8 @@ class FrascoPush(Extension):
                 "channel": "socketio",
                 "secret": None,
                 "prefix_event_with_room": True,
-                "default_current_user_loader": True}
+                "default_current_user_loader": True,
+                "testing_ignore_redis_publish": True}
 
     def _init_app(self, app, state):
         expose_package(app, "frasco_push", __name__)
@@ -124,6 +126,10 @@ def emit_push_event(event, data=None, skip_self=None, room=None, namespace=None,
     if suppress_push_events.top:
         return
     state = get_extension_state('frasco_push')
+    if current_app.testing and testing_push_events.top is not None:
+        testing_push_events.top.append((event, data, skip_self, room, namespace))
+        if state.options['testing_ignore_redis_publish']:
+            return
     if state.options['prefix_event_with_room'] and prefix_event_with_room and room:
         event = "%s:%s" % (room, event)
     if skip_self is None:
