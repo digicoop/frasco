@@ -191,5 +191,7 @@ class DatabaseDictSerializer(object):
                 logger.debug('remap_insert(%s, %s)' % (table.name, data))
                 db.session.execute(table.insert(), data)
 
-    def _mapid(self, idmap, tablename, id):
-        return idmap.get(tablename, {}).get(id, id if self.keep_existing_fks else None)
+    def _mapid(self, idmap, tablename, id, keep_existing=None):
+        if keep_existing is None:
+            keep_existing = self.keep_existing_fks
+        return idmap.get(tablename, {}).get(id, id if keep_existing else None)
