@@ -25,7 +25,11 @@
     {% if not app.config.get('DISABLE_CACHE_SERVICE_WORKER', False) and not app.debug %}
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register("{{ app.config.get('CACHE_SERVICE_WORKER_URL', '/cache-sw.js') }}");
+            try {
+                navigator.serviceWorker.register("{{ app.config.get('CACHE_SERVICE_WORKER_URL', '/cache-sw.js') }}");
+            } catch (e) {
+                console.error(e);
+            }
         }
     </script>
     {% endif %}
