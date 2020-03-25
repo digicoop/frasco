@@ -2,9 +2,10 @@ from flask.signals import Namespace as SignalNamespace
 
 
 _signals = SignalNamespace()
-model_source_updated = _signals.signal('stripe_model_source_updated')
+model_payment_method_updated = _signals.signal('stripe_model_payment_method_updated')
 model_subscription_updated = _signals.signal('stripe_model_subscription_updated')
-model_last_charge_updated = _signals.signal('stripe_model_last_charge_updated')
+model_subscription_invoice_created = _signals.signal('stripe_model_subscription_invoice_created')
+model_last_invoice_updated = _signals.signal('stripe_model_last_invoice_updated')
 invoice_payment = _signals.signal('stripe_invoice_payment')
 
 

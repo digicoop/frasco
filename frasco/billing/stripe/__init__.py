@@ -18,6 +18,7 @@ from .invoice import *
 from .model import *
 
 
+STRIPE_API_VERSION = "2020-03-02"
 stripe.enable_telemetry = False
 
 
@@ -34,11 +35,11 @@ class FrascoStripe(Extension):
                 "send_trial_will_end_email": True,
                 "send_failed_invoice_mail": True,
                 "invoice_ref_kwargs": {},
-                "webhook_validate_event": False,
-                "default_subscription_tax_percent": None}
+                "webhook_validate_event": False}
 
     def _init_app(self, app, state):
         stripe.api_key = state.require_option('api_key')
+        stripe.api_version = STRIPE_API_VERSION
         state.Model = state.import_option('model')
         state.subscription_enabled = hasattr(state.Model, 'stripe_subscription_id')
 
@@ -47,42 +48,62 @@ class FrascoStripe(Extension):
         if has_extension("frasco_mail", app):
             app.extensions.frasco_mail.add_templates_from_package(__name__)
 
-        if has_extension('frasco_eu_vat', app):
-            def on_model_rate_updated(sender):
-                if sender.stripe_subscription:
-                    sender.stripe_subscription.tax_percent = sender.eu_vat_rate
-                    sender.stripe_subscription.save()
-            model_rate_updated.connect(on_model_rate_updated, weak=True)
+        if has_extension('frasco_eu_vat', app) and hasattr(state.Model, '__stripe_has_eu_vat__'):
+            model_rate_updated.connect(lambda sender: sender.update_stripe_subscription_tax_rates(), weak=True)
 
-        stripe_event_signal('customer_source_updated').connect(on_source_event)
-        stripe_event_signal('customer_source_deleted').connect(on_source_event)
+        stripe_event_signal('customer_updated').connect(on_customer_updated_event)
+        stripe_event_signal('customer_deleted').connect(on_customer_deleted_event)
+        stripe_event_signal('payment_method_attached').connect(on_payment_method_event)
+        stripe_event_signal('payment_method_detached').connect(on_payment_method_event)
+        stripe_event_signal('payment_method_updated').connect(on_payment_method_event)
+        stripe_event_signal('payment_method_card_automatically_updated').connect(on_payment_method_event)
         stripe_event_signal('invoice_payment_succeeded').connect(on_invoice_payment)
         stripe_event_signal('invoice_payment_failed').connect(on_invoice_payment)
         if state.subscription_enabled:
+            stripe_event_signal('customer_subscription_created').connect(on_subscription_event)
             stripe_event_signal('customer_subscription_updated').connect(on_subscription_event)
             stripe_event_signal('customer_subscription_deleted').connect(on_subscription_event)
             stripe_event_signal('customer_subscription_trial_will_end').connect(on_trial_will_end)
-
-
-def check_stripe_subscription_is_valid(obj):
-    state = get_extension_state('frasco_stripe')
-    if obj.is_stripe_subscription_valid():
-        if state.options['no_payment_message']:
-            flash(state.options['no_payment_message'], 'error')
-        if state.options['no_payment_redirect_to']:
-            return redirect(state.options['no_payment_redirect_to'])
-    if obj.plan_status == 'past_due' and state.options['subscription_past_due_message']:
-        flash(state.options['subscription_past_due_message'], 'error')
+            stripe_event_signal('invoice_created').connect(on_subscription_invoice_created)
+        if hasattr(state.Model, '__stripe_has_eu_vat__'):
+            stripe_event_signal('customer_tax_id_created').connect(on_tax_id_event)
+            stripe_event_signal('customer_tax_id_updated').connect(on_tax_id_event)
+            stripe_event_signal('customer_tax_id_deleted').connect(on_tax_id_event)
 
 
 @as_transaction
-def on_source_event(sender, stripe_event):
+def on_customer_updated_event(sender, stripe_event):
+    state = get_extension_state('frasco_stripe')
+    customer = stripe_event.data.object
+    obj = state.Model.query_by_stripe_customer(customer.id).first()
+    if obj:
+        obj._update_stripe_customer(customer)
+
+
+@as_transaction
+def on_customer_deleted_event(sender, stripe_event):
+    state = get_extension_state('frasco_stripe')
+    customer = stripe_event.data.object
+    obj = state.Model.query_by_stripe_customer(customer.id).first()
+    if obj:
+        obj._update_stripe_customer(False)
+
+
+@as_transaction
+def on_payment_method_event(sender, stripe_event):
     state = get_extension_state('frasco_stripe')
     source = stripe_event.data.object
     obj = state.Model.query_by_stripe_customer(source.customer).first()
-    if not obj:
-        return
-    obj._update_stripe_source()
+    if obj:
+        obj._update_stripe_customer()
+
+
+@as_transaction
+def on_tax_id_event(sender, stripe_event):
+    state = get_extension_state('frasco_stripe')
+    obj = state.Model.query_by_stripe_customer(stripe_event.data.object.customer).first()
+    if obj:
+        obj.update_from_stripe_eu_vat_number()
 
 
 @as_transaction
@@ -90,9 +111,20 @@ def on_subscription_event(sender, stripe_event):
     state = get_extension_state('frasco_stripe')
     subscription = stripe_event.data.object
     obj = state.Model.query_by_stripe_customer(subscription.customer).first()
-    if not obj:
+    if obj:
+        obj._update_stripe_subscription()
+
+
+@as_transaction
+def on_subscription_invoice_created(sender, stripe_event):
+    state = get_extension_state('frasco_stripe')
+    invoice = stripe_event.data.object
+    if not invoice.subscription:
         return
-    obj._update_stripe_subscription(subscription)
+    obj = state.Model.query_by_stripe_customer(invoice.customer).first()
+    if obj:
+        obj.plan_has_invoice_items = False
+        model_subscription_invoice_created.send(obj)
 
 
 @as_transaction
@@ -100,9 +132,7 @@ def on_trial_will_end(sender, stripe_event):
     state = get_extension_state('frasco_stripe')
     subscription = stripe_event.data.object
     obj = state.Model.query_by_stripe_subscription(subscription.id).first()
-    if not obj:
-        return
-    if state.options['send_trial_will_end_email']:
+    if obj and state.options['send_trial_will_end_email']:
         send_mail(getattr(obj, obj.__stripe_email_property__), 'stripe/trial_will_end.txt', obj=obj)
 
 
@@ -125,15 +155,7 @@ def on_invoice_payment(sender, stripe_event):
             sub_obj = state.Model.query_by_stripe_subscription(invoice.subscription).first()
         if sub_obj:
             sub_obj.plan_status = sub_obj.stripe_subscription.status
-            sub_obj.update_last_stripe_subscription_charge(invoice)
-
-    if getattr(obj, '__stripe_has_eu_vat__', False) and getattr(obj, '__stripe_has_billing_fields__', False) and is_eu_country(obj.billing_country):
-        invoice.metadata['eu_vat_exchange_rate'] = get_exchange_rate(obj.billing_country, invoice.currency.upper())
-        if invoice.tax:
-            invoice.metadata['eu_vat_amount'] = round(invoice.tax * invoice.metadata['eu_vat_exchange_rate'])
-        if obj.eu_vat_number:
-            invoice.metadata['eu_vat_number'] = obj.eu_vat_number
-        invoice.save()
+            sub_obj.update_last_stripe_subscription_invoice(invoice)
 
     invoice_payment.send(invoice)
 

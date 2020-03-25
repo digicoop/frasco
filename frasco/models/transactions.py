@@ -9,7 +9,7 @@ from .ext import db
 import logging
 
 
-__all__ = ('transaction', 'as_transaction', 'current_transaction', 'is_transaction', 'delayed_tx_calls')
+__all__ = ('transaction', 'as_transaction', 'current_transaction', 'is_transaction', 'delayed_tx_calls', 'after_transaction_commit')
 
 
 _transaction_ctx = ContextStack(default_item=True)
@@ -55,6 +55,10 @@ def as_transaction(func):
 
 _current_transaction_ctx = ContextStack()
 current_transaction = _current_transaction_ctx.make_proxy()
+
+
+def after_transaction_commit(func):
+    delayed_tx_calls.call(func, [], {})
 
 
 @event.listens_for(SignallingSession, 'after_begin')

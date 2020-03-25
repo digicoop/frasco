@@ -6,7 +6,6 @@ class InvoiceModelMixin(object):
     currency = db.Column(db.String)
     subtotal = db.Column(db.Float)
     total = db.Column(db.Float)
-    tax_rate = db.Column(db.Float)
     tax_amount = db.Column(db.Float)
     description = db.Column(db.String)
     name = db.Column(db.String)
@@ -26,6 +25,8 @@ class InvoiceModelMixin(object):
 
 class InvoiceItemModelMixin(object):
     amount = db.Column(db.Float)
+    tax_amount = db.Column(db.Float)
+    tax_rate = db.Column(db.Float)
     description = db.Column(db.String)
     quantity = db.Column(db.Integer)
     subtotal = db.Column(db.Float)

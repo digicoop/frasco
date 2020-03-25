@@ -122,7 +122,7 @@ def get_vat_rate(country_code, rate_type='standard'):
             for rate in r.ratesResponse.rate:
                 _vat_rates_cache[country_code][rate.type.lower()] = float(rate.value)
         except Exception as e:
-            current_app.log_exception(e)
+            current_app.logger.debug(e)
             _vat_rates_cache.pop(country_code)
             return KNOWN_VAT_RATES.get(country_code)
     return _vat_rates_cache[country_code].get(rate_type.lower())
@@ -153,7 +153,7 @@ def fetch_exchange_rates():
             rates[cube.attrib['currency']] = float(cube.attrib['rate'])
         _exchange_rates_cache[today] = rates
     except Exception as e:
-        current_app.log_exception(e)
+        current_app.logger.debug(e)
     return rates
 
 

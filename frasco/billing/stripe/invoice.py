@@ -5,7 +5,7 @@ from frasco.billing.eu_vat import is_eu_country, get_vat_rate, should_charge_vat
 import datetime
 
 
-def create_invoice_from_charge(charge, obj=None, lines=None, tax_rate=None):
+def create_invoice_from_charge(charge, obj=None, lines=None, tax_rate=None, tax_amount=None):
     state = get_extension_state('frasco_stripe')
     with create_invoice(**state.options['invoice_ref_kwargs']) as (invoice, InvoiceItem):
         invoice.currency = charge.currency.upper()
@@ -18,15 +18,18 @@ def create_invoice_from_charge(charge, obj=None, lines=None, tax_rate=None):
         if obj is not None:
             _fill_invoice_from_obj(invoice, obj)
 
-        if tax_rate and tax_rate == "eu_vat":
+        if tax_rate == "eu_vat":
             if is_eu_country(invoice.country):
                 tax_rate = get_vat_rate(invoice.country)
                 if not should_charge_vat(invoice.country, obj.eu_vat_number):
                     tax_rate = None
             else:
                 tax_rate = None
-        if tax_rate:
-            invoice.tax_rate = tax_rate
+
+        if tax_amount:
+            invoice.tax_amount = tax_amount
+            invoice.subtotal = invoice.total - tax_amount
+        elif tax_rate:
             invoice.subtotal = invoice.total * (100 / (100 + tax_rate));
             invoice.tax_amount = invoice.total - invoice.subtotal
 
@@ -37,6 +40,8 @@ def create_invoice_from_charge(charge, obj=None, lines=None, tax_rate=None):
                 item.quantity = line.get('quantity', 1)
                 item.currency = line.get('currency', charge.currency.upper())
                 item.description = line['description']
+                item.tax_amount = line.get('tax_amount', (line['amount'] * tax_rate / 100) if tax_rate else 0)
+                item.tax_rate = line.get('tax_rate', tax_rate or 0)
                 invoice.items.append(item)
 
 
@@ -49,10 +54,9 @@ def create_invoice_from_stripe(obj, stripe_invoice):
         invoice.currency = stripe_invoice.currency.upper()
         invoice.subtotal = stripe_invoice.subtotal / 100.0
         invoice.total = stripe_invoice.total / 100.0
-        invoice.tax_rate = stripe_invoice.tax_percent
         invoice.tax_amount = stripe_invoice.tax / 100.0 if stripe_invoice.tax else None
         invoice.description = stripe_invoice.description
-        invoice.issued_at = datetime.datetime.fromtimestamp(stripe_invoice.date)
+        invoice.issued_at = datetime.datetime.fromtimestamp(stripe_invoice.created)
         invoice.paid = stripe_invoice.paid
         invoice.charge_id = stripe_invoice.charge
 
@@ -60,11 +64,17 @@ def create_invoice_from_stripe(obj, stripe_invoice):
             item = InvoiceItem()
             item.external_id = line.id
             item.amount = line.amount / 100.0
+            item.tax_amount = 0
+            item.tax_rate = 0
             item.quantity = line.quantity
             item.currency = line.currency
             item.description = line.description or ''
-            invoice.items.append(item)
 
+            if line.tax_amounts:
+                item.tax_amount = line.tax_amounts[0].amount
+                item.tax_rate = line.tax_rates[0].percentage
+
+            invoice.items.append(item)
 
 def _fill_invoice_from_obj(invoice, obj):
     invoice.customer = obj
