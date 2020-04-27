@@ -15,8 +15,8 @@ logger = logging.getLogger('frasco.redis')
 def redis_get_set(key, callback, ttl=None, coerce=None, serializer=None, redis=None, logging=False):
     if not redis:
         redis = current_app.extensions.frasco_redis.connection
-    if redis.exists(key):
-        value = redis.get(key)
+    value = redis.get(key)
+    if value is not None:
         if logging or (logging is None and current_app.debug):
             logger.debug(u'CACHE HIT: %s' % key)
         if value == 'None':
