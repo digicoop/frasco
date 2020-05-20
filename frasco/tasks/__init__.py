@@ -4,6 +4,7 @@ from frasco.models import delayed_tx_calls
 from flask_rq2 import RQ
 from flask_rq2 import cli
 from rq import get_current_job
+from rq.timeouts import JobTimeoutException
 from .job import FrascoJob
 import redis.exceptions
 import functools
@@ -27,6 +28,12 @@ class FrascoTasks(Extension):
         if app.testing:
             app.config.setdefault('RQ_ASYNC', False)
         state.rq = RQ(app, default_timeout=state.options['tasks_timeout'])
+        state.rq.exception_handler(per_task_exception_handler)
+
+
+def per_task_exception_handler(job, *exc_info):
+    if hasattr(job.func, '__task_exception_handler__'):
+        return job.func.__task_exception_handler__(job, *exc_info)
 
 
 def enqueue_task_now(func, *args, **kwargs):
@@ -59,7 +66,24 @@ def task(**options):
         func.__task_options__ = options
         setattr(func, 'enqueue', functools.partial(enqueue_task, func))
         setattr(func, 'enqueue_now', functools.partial(enqueue_task_now, func))
+        setattr(func, 'exception_handler', task_exception_handler(func))
+        setattr(func, 'timeout_handler', task_exception_handler(func, JobTimeoutException))
         return func
+    return wrapper
+
+
+def task_exception_handler(task_func, exc_type=None):
+    def decorator(handler_func):
+        task_func.__task_exception_handler__ = _wrap_exc_handler_for_type(handler_func, exc_type) if exc_type else handler_func
+        return handler_func
+    return decorator
+
+
+def _wrap_exc_handler_for_type(handler_func, exc_type):
+    @functools.wraps(handler_func)
+    def wrapper(job, *exc_info):
+        if exc_info[0] is exc_type:
+            return handler_func(job, *exc_info)
     return wrapper
 
 
