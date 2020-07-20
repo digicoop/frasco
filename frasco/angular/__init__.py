@@ -10,7 +10,7 @@ import codecs
 
 
 class FrascoAngular(Extension):
-    name = "angular"
+    name = "frasco_angular"
     defaults = {"static_dir": None, # defaults to app.static_folder
                 "static_url_path": None, # defaults to app.static_url_path
                 "angular_template": "angular_layout.html",
