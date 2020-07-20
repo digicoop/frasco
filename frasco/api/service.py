@@ -61,6 +61,10 @@ class ApiService(object):
         kwargs['methods'] = ['POST']
         return self.route(*args, **kwargs)
 
+    def PATCH(self, *args, **kwargs):
+        kwargs['methods'] = ['PATCH']
+        return self.route(*args, **kwargs)
+
     def PUT(self, *args, **kwargs):
         kwargs['methods'] = ['PUT']
         return self.route(*args, **kwargs)
