@@ -43,12 +43,15 @@ class FrascoAngular(Extension):
     def add_route(self, state, endpoint, rule, decorators=None, **options):
         rules = rule if isinstance(rule, (list, tuple)) else [rule]
         def func(*args, **kwargs):
-            return render_template(state.options['angular_template'])
+            return self.angular_view_response()
         if decorators:
             for decorator in reversed(decorators):
                 func = decorator(func)
         for rule in rules:
             self.get_app().add_url_rule(rule, endpoint, func, **options)
+
+    def angular_view_response(self):
+        return render_template(get_extension_state('frasco_angular').options['angular_template'])
 
     @ext_stateful_method
     def register_service_builder(self, state, api_version, filename):
@@ -69,7 +72,7 @@ class FrascoAngular(Extension):
                             (state.options['services_name'] % service.name, service.name, api_version.url_prefix,
                             json.dumps(endpoints, indent=2))
 
-            module += "\n})();";
+            module += "\n})();"
             _write_file(os.path.join(state.options["static_dir"], state.options["app_dir"], filename), module)
         register_assets_builder(builder)
 
