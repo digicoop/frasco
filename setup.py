@@ -59,7 +59,7 @@ setup(
         'pyotp~=2.3.0',
         'python-dateutil~=2.8.1',
         'python-slugify~=4.0.0',
-        'python-socketio~=4.4.0',
+        'python-socketio~=4.6.0',
         'PyYAML~=5.3',
         'redis~=3.4.1',
         'requests~=2.22.0',
