@@ -7,10 +7,11 @@ from .templating import CacheFragmentExtension
 class FrascoRedis(Extension):
     name = "frasco_redis"
     defaults = {"url": "redis://localhost:6379/0",
-                "fragment_cache_timeout": 3600}
+                "fragment_cache_timeout": 3600,
+                "decode_responses": True}
 
     def _init_app(self, app, state):
-        state.connection = StrictRedis.from_url(state.options["url"])
+        state.connection = StrictRedis.from_url(state.options["url"], state.options["decode_responses"])
         app.jinja_env.add_extension(CacheFragmentExtension)
 
 

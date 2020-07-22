@@ -19,6 +19,7 @@ logger = logging.getLogger('frasco.push.server')
 
 class PresenceEnabledRedisManager(socketio.RedisManager):
     def __init__(self, *args, **kwargs):
+        kwargs['redis_options'] = {'decode_responses': True}
         self.presence_session_id = kwargs.pop('presence_session_id', None) or ''
         self.presence_key_prefix = "presence%s:" % self.presence_session_id
         super(PresenceEnabledRedisManager, self).__init__(*args, **kwargs)

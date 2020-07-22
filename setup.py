@@ -61,7 +61,7 @@ setup(
         'python-slugify~=4.0.0',
         'python-socketio~=4.6.0',
         'PyYAML~=5.3',
-        'redis~=3.4.1',
+        'redis~=3.5.3',
         'requests~=2.22.0',
         'simplejson~=3.17.0',
         'suds-py3~=1.4.1.0',
