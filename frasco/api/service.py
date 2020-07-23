@@ -160,12 +160,12 @@ class ApiVersion(ApiService):
         for rule, endpoint, options in rules:
             yield rule, endpoint, endpoint_funcs[endpoint], options
 
-    def as_blueprint(self, name=None, client_var_name="API", client_class_name="SwaggerClient", spec_builder_options=None):
+    def as_blueprint(self, name=None, client_var_name="API", client_class_name="SwaggerClient", spec_builder_options=None, **blueprint_options):
         if not spec_builder_options:
             spec_builder_options = {}
         if not name:
             name = "api_%s" % self.version.replace('.', '_')
-        bp = self.blueprint_class(name, self.import_name, url_prefix=self.url_prefix)
+        bp = self.blueprint_class(name, self.import_name, url_prefix=self.url_prefix, **blueprint_options)
 
         @bp.before_request
         def before_request():
