@@ -121,14 +121,3 @@ def convert_type_to_spec(type):
     if type is bool:
         return "boolean"
     return "string"
-
-
-def build_swagger_client(spec, spec_url, var_name='API', class_name = 'SwaggerClient'):
-    return "function %s(options) { options['spec'] = %s; %s.call(this, '%s', options); } %s.prototype = new %s();" % (
-            var_name,
-            json.dumps(spec),
-            class_name,
-            spec_url,
-            var_name,
-            class_name
-        )

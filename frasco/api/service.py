@@ -5,7 +5,7 @@ from frasco.request_params import disable_request_params
 from frasco.marshaller import disable_marshaller
 from werkzeug.wrappers import Response
 import functools
-from .swagger import build_swagger_spec, build_swagger_client
+from .swagger import build_swagger_spec
 from .errors import *
 
 
@@ -160,7 +160,7 @@ class ApiVersion(ApiService):
         for rule, endpoint, options in rules:
             yield rule, endpoint, endpoint_funcs[endpoint], options
 
-    def as_blueprint(self, name=None, client_var_name="API", client_class_name="SwaggerClient", spec_builder_options=None, **blueprint_options):
+    def as_blueprint(self, name=None, cors_wildcard=True, cors_allow_credentials=False, spec_builder_options=None, **blueprint_options):
         if not spec_builder_options:
             spec_builder_options = {}
         if not name:
@@ -175,6 +175,10 @@ class ApiVersion(ApiService):
         def after_request(resp):
             resp.headers.add('Cache-Control', 'no-cache')
             resp.headers.add('X-Api-Version', self.version)
+            if cors_wildcard:
+                resp.headers.add('Access-Control-Allow-Origin', '*')
+                if cors_allow_credentials:
+                    resp.headers.add('Access-Control-Allow-Credentials', 'true')
             return resp
 
         endpoint_funcs = {}
@@ -185,10 +189,5 @@ class ApiVersion(ApiService):
         @bp.route('/spec.json')
         def get_spec():
             return jsonify(**self.build_apispec(**spec_builder_options))
-
-        @bp.route("/client.js")
-        def get_client():
-            return build_swagger_client(self.build_apispec(**spec_builder_options),
-                url_for('.get_spec', _external=True), client_var_name, client_class_name)
 
         return bp
