@@ -154,26 +154,31 @@ def oauth_session_login(provider, token, redirect_url=None):
     return redirect(redirect_url)
 
 
-def oauth_login(provider, id_property, id_value, data, defaults, redirect_url=None):
+def oauth_login(provider, id_property, id_value, data, defaults, redirect_url=None, auto_associate_with_matching_email=False):
     """Execute a login via oauth. If no user exists, oauth_signup() will be called
     """
     state = get_extension_state('frasco_users')
     user = state.Model.query_by_oauth_token(provider, id_property, id_value)
     if not redirect_url:
         redirect_url = request.args.get('next') or url_for(state.options["redirect_after_login"])
+
     if is_user_logged_in():
         if user and user != current_user:
             if state.options["oauth_user_already_exists_message"]:
                 flash(state.options["oauth_user_already_exists_message"].format(provider=provider), "error")
             return redirect(redirect_url)
         user = current_user
-        if provider not in user.auth_providers:
-            user.auth_providers.append(provider)
-    elif not user:
+    elif not user and defaults.get('email') and auto_associate_with_matching_email:
+        user = state.Model.query_by_email(defaults['email']).first()
+    
+    if not user:
         return oauth_signup(provider, data, defaults, redirect_url=redirect_url)
-    else:
-        login_user(user, provider=provider)
+    
     user.save_oauth_token_data(provider, data)
+    if provider not in user.auth_providers:
+        user.auth_providers.append(provider)
+    if not is_user_logged_in():
+        login_user(user, provider=provider)
     return redirect(redirect_url)
 
 
