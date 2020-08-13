@@ -27,12 +27,21 @@ logger = logging.getLogger('frasco.users')
 @users_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     state = get_extension_state('frasco_users')
+
+    if request.method == "GET" and not "oauth" in request.args:
+        # signup was accessed directly so we ensure that oauth
+        # params stored in session are cleaned. this can happen
+        # if a user started to login using an oauth provider but
+        # didn't complete the process
+        clear_oauth_signup_session()
+
+    is_oauth = "oauth_signup" in session
     redirect_url = request.args.get("next") or _make_redirect_url(state.options["redirect_after_login"])
 
     if is_user_logged_in():
         return redirect(redirect_url)
 
-    if not request.args.get("no_redirect"):
+    if not is_oauth and not request.args.get("no_redirect"):
         if state.options['login_redirect']:
             return redirect(state.options['login_redirect'])
         if state.manager.login_view != "users.login":
@@ -61,12 +70,15 @@ def login():
                 return redirect(url_for('.login_2fa'))
 
             with transaction():
-                login_user(user, remember=form.remember.data)
+                if is_oauth:
+                    user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
+                login_user(user, remember=form.remember.data, provider=session.get('oauth_signup'))
+                clear_oauth_signup_session()
             return redirect(redirect_url)
 
         flash(state.options['login_error_message'], 'error')
 
-    return render_template('users/login.html', form=form)
+    return render_template('users/login.html', form=form, is_oauth=is_oauth)
 
 
 @users_blueprint.route('/login/2fa', methods=['GET', 'POST'])
@@ -74,7 +86,10 @@ def login_2fa():
     state = get_extension_state('frasco_users')
     if not state.options['enable_2fa'] or not session.get('2fa'):
         return redirect(url_for('.login'))
+
+    is_oauth = "oauth_signup" in session
     redirect_url = request.args.get("next") or _make_redirect_url(state.options["redirect_after_login"])
+
     if is_user_logged_in():
         return redirect(redirect_url)
 
@@ -94,7 +109,10 @@ def login_2fa():
         remember = session.pop('login_remember')
         if verify_2fa(user, form.code.data):
             with transaction():
-                login_user(user, remember=remember)
+                if is_oauth:
+                    user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
+                login_user(user, remember=remember, provider=session.get('oauth_signup'))
+                clear_oauth_signup_session()
             r = make_response(redirect(redirect_url))
             if form.remember.data:
                 r.set_cookie('remember_2fa', generate_user_token(user, '2fa'),
@@ -103,7 +121,7 @@ def login_2fa():
         flash(state.options['login_2fa_error_message'], 'error')
         return redirect(url_for('.login'))
 
-    return render_template('users/login_2fa.html', form=form)
+    return render_template('users/login_2fa.html', form=form, is_oauth=is_oauth)
 
 
 @users_blueprint.route('/logout')
@@ -131,8 +149,9 @@ def signup():
     if state.options['signup_redirect']:
         return redirect(state.options['signup_redirect'])
         
+    is_oauth = "oauth_signup" in session
     allow_signup = state.options["allow_signup"]
-    if state.options["oauth_signup_only"] and "oauth_signup" not in session:
+    if state.options["oauth_signup_only"] and not is_oauth:
         allow_signup = False
 
     if not allow_signup:
@@ -142,7 +161,7 @@ def signup():
             "users.login", next=request.args.get("next")))
 
     form = state.import_option('signup_form_class')(obj=AttrDict(session.get('oauth_user_defaults', {})))
-    must_provide_password = "oauth_signup" not in session or state.options["oauth_must_provide_password"]
+    must_provide_password = not is_oauth or state.options["oauth_must_provide_password"]
 
     if form.validate_on_submit():
         try:
@@ -175,7 +194,7 @@ def signup():
                 populate_obj(user, session.get("oauth_user_defaults", {}))
                 signup_user(user, provider=session.get('oauth_signup'), send_signal=False, **form.data)
 
-                if 'oauth_signup' in session:
+                if is_oauth:
                     user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
                 clear_oauth_signup_session()
                 db.session.flush()
@@ -188,7 +207,7 @@ def signup():
             db.session.rollback()
 
     return render_template('users/signup.html',
-        form=form, must_provide_password=must_provide_password)
+        form=form, must_provide_password=must_provide_password, is_oauth=is_oauth)
 
 
 @users_blueprint.route('/signup/oauth')
