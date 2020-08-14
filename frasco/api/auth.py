@@ -32,7 +32,7 @@ class FrascoApiKeyAuthentification(Extension):
                 authz = request.headers['Authorization']
                 if authz.startswith('Basic '):
                     try:
-                        api_key = base64.b64decode(authz[6:]).split(':')[0]
+                        api_key = base64.b64decode(authz[6:]).decode('utf-8').split(':')[0]
                     except:
                         return
                 elif authz.startswith('Bearer '):
