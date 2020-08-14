@@ -80,7 +80,7 @@ def url_for_avatar(user):
     hash = None
     username = getattr(user, state.options["flavatar_name_column"] or 'username', None)
     if username:
-        username = slugify(str(username).lower())
+        username = slugify(username.lower())
         hash = hashlib.md5(username.encode('utf-8')).hexdigest()
 
     email = getattr(user, state.options["gravatar_email_column"] or 'email', None)

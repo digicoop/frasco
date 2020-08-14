@@ -10,7 +10,6 @@ from authlib.integrations.flask_client import OAuth
 from sqlalchemy.dialects import postgresql
 import datetime
 import uuid
-import hashlib
 
 
 class OAuth1RequestTokenCache(object):
