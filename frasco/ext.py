@@ -140,7 +140,7 @@ def has_extension(name, app=None):
     return get_extension_state(name, app=app, must_exist=False) is not None
 
 
-def load_extensions_from_config(app, key='EXTENSIONS'):
+def load_extensions_from_config(app, key='EXTENSIONS', aliases=None, fallback_package=None):
     loaded = []
     for spec in app.config.get(key, []):
         if isinstance(spec, str):
@@ -150,7 +150,9 @@ def load_extensions_from_config(app, key='EXTENSIONS'):
             ext_module, options = spec
         elif isinstance(spec, dict):
             ext_module, options = next(x for x in spec.items())
-        ext_class = import_class(ext_module, Extension)
+        if aliases and ext_module in aliases:
+            ext_module = aliases[ext_module]
+        ext_class = import_class(ext_module, Extension, fallback_package)
         loaded.append(ext_class(app, **options))
         logging.getLogger('frasco').info("Extension '%s.%s' loaded" % (ext_class.__module__, ext_class.__name__))
     return loaded
