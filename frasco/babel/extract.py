@@ -13,7 +13,7 @@ def edit_pofile(filename, autosave=True):
         catalog = pofile.read_po(f)
     yield catalog
     if autosave:
-        with open(filename, "w") as f:
+        with open(filename, "wb") as f:
             pofile.write_po(f, catalog)
 
 
@@ -47,7 +47,7 @@ def exec_babel_extract(path, potfile, mapping=None, keywords=None):
     state = get_extension_state('frasco_babel')
     if mapping:
         mapping_file = tempfile.NamedTemporaryFile()
-        mapping_file.write(mapping)
+        mapping_file.write(mapping.encode('utf-8'))
         mapping_file.flush()
 
     if isinstance(keywords, str):
