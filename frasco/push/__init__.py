@@ -5,7 +5,7 @@ from frasco.models import delayed_tx_calls
 from frasco.ctx import ContextStack
 from frasco.assets import expose_package
 from itsdangerous import URLSafeTimedSerializer
-from redis import StrictRedis
+from redis import Redis
 import hashlib
 import logging
 import subprocess
@@ -38,8 +38,7 @@ class FrascoPush(Extension):
                 "secret": None,
                 "prefix_event_with_room": True,
                 "default_current_user_loader": True,
-                "testing_ignore_redis_publish": True,
-                "decode_responses": True}
+                "testing_ignore_redis_publish": True}
 
     def _init_app(self, app, state):
         expose_package(app, "frasco_push", __name__)
@@ -68,7 +67,7 @@ class FrascoPush(Extension):
                 server_name.split(':')[0], state.options['server_port'])
 
         state.token_serializer = URLSafeTimedSerializer(state.options['secret'])
-        state.redis = StrictRedis.from_url(state.options["redis_url"], state.options["decode_responses"])
+        state.redis = Redis.from_url(state.options["redis_url"])
         state.host_id = uuid.uuid4().hex
 
         @app.cli.command('push-server')

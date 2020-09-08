@@ -19,7 +19,6 @@ logger = logging.getLogger('frasco.push.server')
 
 class PresenceEnabledRedisManager(socketio.RedisManager):
     def __init__(self, *args, **kwargs):
-        kwargs['redis_options'] = {'decode_responses': True}
         self.presence_session_id = kwargs.pop('presence_session_id', None) or ''
         self.presence_key_prefix = "presence%s:" % self.presence_session_id
         super(PresenceEnabledRedisManager, self).__init__(*args, **kwargs)
@@ -40,7 +39,7 @@ class PresenceEnabledRedisManager(socketio.RedisManager):
                 self.server.emit('%s:left' % room, sid, room=room, skip_sid=sid)
 
     def get_room_members(self, namespace, room):
-        return self.redis.smembers("%s%s:%s" % (self.presence_key_prefix, namespace, room))
+        return [sid.decode() for sid in self.redis.smembers("%s%s:%s" % (self.presence_key_prefix, namespace, room))]
 
     def set_member_info(self, sid, namespace, info):
         self.redis.set("%s%s@%s" % (self.presence_key_prefix, namespace, sid), json.dumps(info))
