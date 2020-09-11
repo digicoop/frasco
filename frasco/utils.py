@@ -219,9 +219,11 @@ class ShellError(Exception):
 
 
 def shell_exec(args, echo=True, fg="green", **kwargs):
-    p = subprocess.run(args, stderr=subprocess.STDOUT, **kwargs)
+    kwargs["stdout"] = subprocess.PIPE
+    kwargs["stderr"] = subprocess.STDOUT
+    p = subprocess.run(args, **kwargs)
     if p.returncode > 0:
-        raise ShellError(p.returncode, out)
+        raise ShellError(p.returncode, p.stdout)
     if echo:
         click.secho(p.stdout, fg=fg)
     return p.stdout
