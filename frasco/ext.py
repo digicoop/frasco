@@ -140,9 +140,13 @@ def has_extension(name, app=None):
     return get_extension_state(name, app=app, must_exist=False) is not None
 
 
-def load_extensions_from_config(app, key='EXTENSIONS', aliases=None, fallback_package=None):
+def load_extensions_from_config(app, key='EXTENSIONS', **kwargs):
+    load_extensions(app, app.config.get(key, []), **kwargs)
+
+
+def load_extensions(app, config, aliases=None, fallback_package=None):
     loaded = []
-    for spec in app.config.get(key, []):
+    for spec in config:
         if isinstance(spec, str):
             ext_module = spec
             options = {}
