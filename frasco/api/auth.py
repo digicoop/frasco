@@ -1,4 +1,4 @@
-from flask import request
+from flask import request, has_request_context
 from frasco.ext import *
 from frasco.models import db
 from frasco.users import get_current_user, is_user_logged_in
@@ -43,17 +43,12 @@ class FrascoApiKeyAuthentification(Extension):
                 return
 
             try:
-                key = state.Model.query.filter_by(value=api_key).first()
+                user = get_user_from_api_key(api_key)
             except:
                 return
-            if key:
-                now = datetime.datetime.utcnow()
-                if key.expires_at and key.expires_at < now:
-                    return None
-                key.last_accessed_at = now
-                key.last_accessed_from = request.remote_addr
+            if user:
                 db.session.commit()
-                return key.user
+            return user
 
 
 def create_api_key(user=None, expires_at=None):
@@ -66,6 +61,23 @@ def create_api_key(user=None, expires_at=None):
     key.value = hashlib.sha1(uuid.uuid4().bytes).hexdigest()
     key.expires_at = expires_at
     return key
+
+
+def get_user_from_api_key(api_key, log_access=True, access_from=None):
+    key = get_extension_state('frasco_api_key_auth').Model.query.filter_by(value=api_key).first()
+    if key:
+        now = datetime.datetime.utcnow()
+        if key.expires_at and key.expires_at < now:
+            return
+        if log_access:
+            key.last_accessed_at = now
+            if access_from:
+                key.last_accessed_from = access_from
+            elif has_request_context():
+                key.last_accessed_from = request.remote_addr
+            else:
+                key.last_accessed_from = None
+        return key.user
 
 
 def auth_required(func):
