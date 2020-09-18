@@ -46,7 +46,7 @@ class FrascoGeoip(Extension):
                 edition = CITY_EDITION if state.options["use_city_db"] else COUNTRY_EDITION
             url = "%s?edition_id=%s&suffix=%s&license_key=%s" % (DOWNLOAD_URL, edition, suffix, license_key)
             shell_exec(["wget", "-O", tmpfilename, url])
-            dbfilename = shell_exec(["tar", "tzf", tmpfilename, "--no-anchored", state.options['db']], echo=False).strip()
+            dbfilename = shell_exec(["tar", "tzf", tmpfilename, "--no-anchored", state.options['db']], echo=False).decode().strip()
             shell_exec(["tar", "-C", "/tmp", "-xzf", tmpfilename, dbfilename])
             shell_exec(["mv", os.path.join("/tmp", dbfilename), state.options['db']])
 

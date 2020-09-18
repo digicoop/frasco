@@ -225,7 +225,7 @@ def shell_exec(args, echo=True, fg="green", **kwargs):
     if p.returncode > 0:
         raise ShellError(p.returncode, p.stdout)
     if echo:
-        click.secho(p.stdout, fg=fg)
+        click.secho(p.stdout.decode(), fg=fg)
     return p.stdout
 
 
