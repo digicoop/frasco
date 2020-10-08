@@ -44,6 +44,8 @@ def enqueue_now(func, **options):
     if getattr(func, '__task_options__', None):
         options.update(func.__task_options__)
     queue_name = options.pop('queue', None)
+    if callable(queue_name):
+        queue_name = queue_name()
     return get_extension_state('frasco_tasks').rq.get_queue(queue_name).enqueue_call(func, **options)
 
 
