@@ -101,6 +101,8 @@ def send_message_sync(msg, connection="default"):
     try:
         if bulk_connection_context.top:
             bulk_connection_context.top.send(msg)
+        elif isinstance(connection, MailProvider):
+            connection.send(msg)
         else:
             state.connections[connection].send(msg)
         email_sent.send(msg)
