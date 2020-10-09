@@ -1,22 +1,22 @@
 import mimetypes
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename as wz_secure_filename
-from io import StringIO
+from io import StringIO, BytesIO
 from frasco.ext import get_extension_state
 from tempfile import NamedTemporaryFile, gettempdir
 import os
 import uuid
 
 
-__all__ = ('StringFileStorage', 'generate_filename', 'save_uploaded_file_temporarly', 'file_size', 'format_file_size')
+__all__ = ('BytesFileStorage', 'StringFileStorage', 'generate_filename', 'save_uploaded_file_temporarly', 'file_size', 'format_file_size')
 
 
 mimetypes.init()
 
 
-class StringFileStorage(FileStorage):
-    def __init__(self, data, filename, mimetype=None, **kwargs):
-        super(StringFileStorage, self).__init__(StringIO(data), filename, **kwargs)
+class BytesFileStorage(FileStorage):
+    def __init__(self, data, filename, mimetype=None, io_class=BytesIO, **kwargs):
+        super().__init__(io_class(data), filename, **kwargs)
         if mimetype is None:
             try:
                 mimetype = mimetypes.guess_type(filename)[0]
@@ -27,6 +27,12 @@ class StringFileStorage(FileStorage):
     @property
     def mimetype(self):
         return self._mimetype
+
+
+class StringFileStorage(BytesFileStorage):
+    def __init__(self, data, filename, mimetype=None, **kwargs):
+        kwargs['io_class'] = StringIO
+        super().__init__(data, filename, mimetype, **kwargs)
 
 
 def generate_filename(filename, uuid_prefix=None, uuid_prefix_path_separator=None, keep_filename=None,
