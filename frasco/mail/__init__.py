@@ -5,7 +5,6 @@ from frasco.models import delayed_tx_calls
 from frasco.tasks import enqueue_task
 from frasco.templating.extensions import RemoveYamlFrontMatterExtension
 from frasco.utils import extract_unmatched_items, import_class, AttrDict
-from flask_mail import Mail
 from jinja_macro_tags import MacroLoader, MacroRegistry
 from jinja2 import ChoiceLoader, FileSystemLoader, PackageLoader
 from contextlib import contextmanager
@@ -45,7 +44,6 @@ class FrascoMail(Extension):
     """
     name = "frasco_mail"
     state_class = FrascoMailState
-    prefix_extra_options = "MAIL_"
     defaults = {"provider": "smtp",
                 "connections": {},
                 "default_layout": "layout.html",
@@ -63,15 +61,13 @@ class FrascoMail(Extension):
                 "send_async": False}
 
     def _init_app(self, app, state):
-        state.mail = Mail(app)
-
         connections = dict(state.options['connections'])
         if "default" not in connections:
             connections["default"] = dict(extract_unmatched_items(state.options, self.defaults or {}),
                 provider=state.require_option('provider'))
-        for provider, provider_opts in connections.items():
-            provider_class = import_class(provider_opts.get('provider', 'smtp'), MailProvider, "frasco.mail.providers")
-            state.connections[provider] = provider_class(app, state, provider_opts)
+        for name, opts in connections.items():
+            opts = dict(**opts)
+            state.connections[name] = self.create_connection(opts.pop('provider', 'smtp'), opts, _app=app)
 
         state.add_template_folder(os.path.join(app.root_path, "emails"))
         state.jinja_env = app.jinja_env.overlay(loader=state.jinja_loader)
@@ -86,6 +82,11 @@ class FrascoMail(Extension):
                 state.options['default_locale'] = app.extensions.frasco_babel.options['default_locale']
             if state.options['localized_emails'] is None:
                 state.options['localized_emails'] = '{locale}/{filename}'
+
+    @ext_stateful_method
+    def create_connection(self, state, provider, options):
+        provider_class = import_class(provider, MailProvider, "frasco.mail.providers")
+        return provider_class(state, options)
 
 
 @delayed_tx_calls.proxy

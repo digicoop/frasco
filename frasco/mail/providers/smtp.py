@@ -1,16 +1,25 @@
 from frasco.mail.provider import MailProvider
+from flask_mail import _Mail, Connection
 
 
 class SMTPProvider(MailProvider):
+    def __init__(self, state, options):
+        super().__init__(state, options)
+        self.mail_state = _Mail(**options)
+
+    def connect(self):
+        return Connection(self.mail_state)
+
     def send(self, msg):
-        return self.state.mail.send(msg)
+        with self.connect() as conn:
+            conn.send(msg)
 
     def start_bulk_connection(self):
-        connection = self.state.mail.connect()
+        conn = self.connect()
         # simulate entering a with context
         # (flask-mail does not provide a way to connect otherwise)
-        connection.__enter__()
-        return connection
+        conn.__enter__()
+        return conn
 
     def stop_bulk_connection(self, conn):
         conn.__exit__(None, None, None)

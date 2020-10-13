@@ -15,8 +15,7 @@ class BulkConnection(object):
 
 
 class MailProvider(object):
-    def __init__(self, app, state, options):
-        self.app = app
+    def __init__(self, state, options):
         self.state = state
         self.options = options
 
