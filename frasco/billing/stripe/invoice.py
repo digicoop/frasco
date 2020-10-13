@@ -72,7 +72,7 @@ def create_invoice_from_stripe(obj, stripe_invoice):
 
             if line.tax_amounts:
                 item.tax_amount = line.tax_amounts[0].amount
-                item.tax_rate = line.tax_rates[0].percentage
+                item.tax_rate = line.tax_rates[0].amount if line.tax_rates else stripe_invoice.default_tax_rates[0].percentage
 
             invoice.items.append(item)
 
