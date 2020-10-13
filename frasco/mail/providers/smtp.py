@@ -5,7 +5,19 @@ from flask_mail import _Mail, Connection
 class SMTPProvider(MailProvider):
     def __init__(self, state, options):
         super().__init__(state, options)
-        self.mail_state = _Mail(**options)
+        self.mail_state = _Mail(
+            options.get('server', '127.0.0.1'),
+            options.get('username'),
+            options.get('password'),
+            options.get('port', 25),
+            options.get('use_tls', False),
+            options.get('use_ssl', False),
+            options.get('default_sender'),
+            False, # debug
+            options.get('max_emails'),
+            False, # suppress
+            options.get('ascii_attachments', False)
+        )
 
     def connect(self):
         return Connection(self.mail_state)

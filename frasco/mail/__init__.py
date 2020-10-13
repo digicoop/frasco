@@ -8,6 +8,7 @@ from frasco.utils import extract_unmatched_items, import_class, AttrDict
 from jinja_macro_tags import MacroLoader, MacroRegistry
 from jinja2 import ChoiceLoader, FileSystemLoader, PackageLoader
 from contextlib import contextmanager
+from flask_mail import Mail
 import os
 import datetime
 
@@ -61,10 +62,21 @@ class FrascoMail(Extension):
                 "send_async": False}
 
     def _init_app(self, app, state):
+        mail = Mail(app) # needed for Message even if we will never use
         connections = dict(state.options['connections'])
         if "default" not in connections:
-            connections["default"] = dict(extract_unmatched_items(state.options, self.defaults or {}),
-                provider=state.require_option('provider'))
+            connections["default"] = {
+                'provider': 'smtp',
+                'server': state.options.get('server', '127.0.0.1'),
+                'username': state.options.get('username'),
+                'password': state.options.get('password'),
+                'port': state.options.get('port', 25),
+                'use_tls': state.options.get('use_tls', False),
+                'use_ssl': state.options.get('use_ssl', False),
+                'default_sender': state.options.get('default_sender'),
+                'max_emails': state.options.get('max_emails'),
+                'ascii_attachments': state.options.get('ascii_attachments', False)
+            }
         for name, opts in connections.items():
             opts = dict(**opts)
             state.connections[name] = self.create_connection(opts.pop('provider', 'smtp'), opts, _app=app)
