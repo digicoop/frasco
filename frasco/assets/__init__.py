@@ -65,7 +65,9 @@ class AssetsBlueprint(Blueprint):
 
 
 def expose_package(app, name, import_name):
-    app.register_blueprint(AssetsBlueprint(name, import_name))
+    bp = AssetsBlueprint(name, import_name)
+    app.register_blueprint(bp)
+    return bp
 
 
 def register_assets_builder(func=None):
