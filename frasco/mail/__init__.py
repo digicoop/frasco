@@ -113,7 +113,7 @@ def send_message_sync(msg, connection="default"):
 
     if state.options['suppress_send']:
         if state.options["log_messages"] or current_app.testing or current_app.debug:
-            log_message(msg, state.options['dumped_messages_folder'])
+            log_message(msg, state.options['dumped_messages_folder'], connection)
         email_sent.send(msg)
         return
 
@@ -126,10 +126,10 @@ def send_message_sync(msg, connection="default"):
             state.connections[connection].send(msg)
         email_sent.send(msg)
         if state.options["log_messages"] or current_app.testing or current_app.debug:
-            log_message(msg, state.options['dumped_messages_folder'])
+            log_message(msg, state.options['dumped_messages_folder'], connection)
     except Exception as e:
         if state.options["log_messages_on_failure"]:
-            log_message(msg, state.options['dumped_messages_folder'])
+            log_message(msg, state.options['dumped_messages_folder'], connection)
         if not state.options['silent_failures']:
             raise e
         current_app.log_exception(e)
