@@ -92,9 +92,13 @@ class Extension(object):
 def ext_stateful_method(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        app = kwargs.pop('_app', None)
-        if has_app_context() or self.app or app:
-            return func(self, self.get_state(app), *args, **kwargs)
+        state = kwargs.pop('_state', None)
+        if not state:
+            app = kwargs.pop('_app', None)
+            if has_app_context() or self.app or app:
+                state = self.get_state(app)
+        if state:
+            return func(self, state, *args, **kwargs)
         self._wait_for_state_methods.append((func, args, kwargs))
     return wrapper
 

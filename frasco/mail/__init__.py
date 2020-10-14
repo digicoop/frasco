@@ -78,8 +78,7 @@ class FrascoMail(Extension):
                 'ascii_attachments': state.options.get('ascii_attachments', False)
             }
         for name, opts in connections.items():
-            opts = dict(**opts)
-            state.connections[name] = self.create_connection(opts.pop('provider', 'smtp'), opts, _app=app)
+            self.register_connection(name, opts, _app=app)
 
         state.add_template_folder(os.path.join(app.root_path, "emails"))
         state.jinja_env = app.jinja_env.overlay(loader=state.jinja_loader)
@@ -96,9 +95,16 @@ class FrascoMail(Extension):
                 state.options['localized_emails'] = '{locale}/{filename}'
 
     @ext_stateful_method
-    def create_connection(self, state, provider, options):
+    def create_connection(self, state, options, provider=None):
+        if not provider:
+            options = dict(**options)
+            provider = options.pop('provider', 'smtp')
         provider_class = import_class(provider, MailProvider, "frasco.mail.providers")
         return provider_class(state, options)
+
+    @ext_stateful_method
+    def register_connection(self, state, name, options, provider=None):
+        state.connections[name] = self.create_connection(options, provider, _state=state)
 
 
 @delayed_tx_calls.proxy

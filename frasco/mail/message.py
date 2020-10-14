@@ -143,9 +143,9 @@ def create_message(to, tpl, **kwargs):
     return msg
 
 
-def log_message(message, dump_dir=None):
-    logging.getLogger('frasco.mail').info("Email %s sent to %s from %s titled \"%s\"" % (
-        getattr(message, 'template', '[no template]'), message.recipients, message.sender, message.subject))
+def log_message(message, dump_dir=None, connection=None):
+    logging.getLogger('frasco.mail').info("Email %s sent to %s from %s titled \"%s\" via connection %s" % (
+        getattr(message, 'template', '[no template]'), message.recipients, message.sender, message.subject, str(connection) or "?"))
     if dump_dir:
         if not os.path.exists(dump_dir):
             os.mkdir(dump_dir, 0o777)
