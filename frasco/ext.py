@@ -2,6 +2,7 @@
 from flask import current_app, has_app_context
 from frasco.utils import (AttrDict, import_string, find_classes_in_module, extract_unmatched_items,
                           import_string, import_class, deep_update_dict)
+from collections import OrderedDict
 import functools
 import inspect
 import logging
@@ -150,6 +151,18 @@ def load_extensions_from_config(app, key='EXTENSIONS', **kwargs):
 
 def load_extensions(app, config, aliases=None, fallback_package=None):
     loaded = []
+    exts = list_extensions_from_config(app, config, aliases)
+    for ext_module, options in exts.items():
+        ext_class = import_class(ext_module, Extension, fallback_package)
+        loaded.append(ext_class(app, **options))
+        logging.getLogger('frasco').info("Extension '%s.%s' loaded" % (ext_class.__module__, ext_class.__name__))
+    return loaded
+
+
+def list_extensions_from_config(app, config, aliases=None):
+    if not aliases:
+        aliases = {}
+    exts = OrderedDict()
     for spec in config:
         if isinstance(spec, str):
             ext_module = spec
@@ -158,9 +171,5 @@ def load_extensions(app, config, aliases=None, fallback_package=None):
             ext_module, options = spec
         elif isinstance(spec, dict):
             ext_module, options = next(x for x in spec.items())
-        if aliases and ext_module in aliases:
-            ext_module = aliases[ext_module]
-        ext_class = import_class(ext_module, Extension, fallback_package)
-        loaded.append(ext_class(app, **options))
-        logging.getLogger('frasco').info("Extension '%s.%s' loaded" % (ext_class.__module__, ext_class.__name__))
-    return loaded
+        exts[aliases.get(ext_module, ext_module)] = options
+    return exts
