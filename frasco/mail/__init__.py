@@ -98,7 +98,7 @@ class FrascoMail(Extension):
 
 
 @delayed_tx_calls.proxy
-def send_message_sync(msg, connection="default"):
+def send_message_sync(msg, connection="default", silent=None):
     state = get_extension_state('frasco_mail')
 
     if state.options['suppress_send']:
@@ -120,7 +120,7 @@ def send_message_sync(msg, connection="default"):
     except Exception as e:
         if state.options["log_messages_on_failure"]:
             log_message(msg, state.options['dumped_messages_folder'], connection)
-        if not state.options['silent_failures']:
+        if (silent is None and not state.options['silent_failures']) or silent is False:
             raise e
         current_app.log_exception(e)
 
