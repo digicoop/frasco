@@ -31,12 +31,13 @@ def wrap_service_func_for_internal_call(func):
 
 
 class ApiService(object):
-    def __init__(self, name=None, url_prefix=None):
+    def __init__(self, name=None, url_prefix=None, description=None):
         self.name = name
         self.url_prefix = url_prefix
         self.rules = []
         self.endpoint_funcs = {}
         self.decorators = []
+        self.description = description
 
     def add_endpoint(self, rule, func, **options):
         endpoint = options.pop("endpoint", func.__name__)

@@ -22,7 +22,7 @@ def build_swagger_spec(api_version, with_security_scheme=False):
     for service in api_version.iter_services():
         paths = {}
         tag = {"name": service.name}
-        if hasattr(service, 'description'):
+        if service.description:
             tag["description"] = service.description
         spec.tag(tag)
         for rule, endpoint, func, options in service.iter_endpoints():
