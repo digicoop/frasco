@@ -65,18 +65,8 @@ class FrascoMail(Extension):
         mail = Mail(app) # needed for Message even if we will never use
         connections = dict(state.options['connections'])
         if "default" not in connections:
-            connections["default"] = {
-                'provider': 'smtp',
-                'server': state.options.get('server', '127.0.0.1'),
-                'username': state.options.get('username'),
-                'password': state.options.get('password'),
-                'port': state.options.get('port', 25),
-                'use_tls': state.options.get('use_tls', False),
-                'use_ssl': state.options.get('use_ssl', False),
-                'default_sender': state.options.get('default_sender'),
-                'max_emails': state.options.get('max_emails'),
-                'ascii_attachments': state.options.get('ascii_attachments', False)
-            }
+            connections["default"] = dict(extract_unmatched_items(state.options, self.defaults or {}),
+                provider=state.require_option('provider'))
         for name, opts in connections.items():
             self.register_connection(name, opts, _app=app)
 
