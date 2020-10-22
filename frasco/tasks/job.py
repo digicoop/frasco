@@ -61,11 +61,6 @@ class FrascoJob(FlaskJob):
             })
         return job
 
-    def _deserialize_data(self):
-        self._func_name, self._instance, self._args, self._kwargs = self.serializer.loads(self.data)
-        self._args = unpack_task_args(self._args)
-        self._kwargs = unpack_task_args(self._kwargs)
-
     @property
     def data(self):
         if self._data is UNEVALUATED:
@@ -98,10 +93,9 @@ class FrascoJob(FlaskJob):
         self._kwargs = UNEVALUATED
 
     def perform(self):
-        if has_app_context():
-            # if async=False, app context may already exist
-            return self.perform_in_app_context()
         app = self.load_app()
+        if not app.config.get('RQ_ASYNC'):
+            return self.perform_in_app_context()
         with app.app_context():
             return self.perform_in_app_context()
 
@@ -112,3 +106,6 @@ class FrascoJob(FlaskJob):
                 return RQJob.perform(self)
         else:
             return RQJob.perform(self)
+
+    def _execute(self):
+        return self.func(*unpack_task_args(self.args), **unpack_task_args(self.kwargs))
