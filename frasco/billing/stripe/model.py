@@ -412,12 +412,13 @@ class StripeBillingDetailsModelMixin(object):
         self.billing_email = self.stripe_customer.email
         self.billing_phone = self.stripe_customer.phone
         addr = self.stripe_customer.address
-        self.billing_address_line1 = addr['line1']
-        self.billing_address_line2 = addr['line2']
-        self.billing_address_zip = addr['postal_code']
-        self.billing_address_city = addr['city']
-        self.billing_address_state = addr['state']
-        self.billing_address_country = addr['country']
+        if addr:
+            self.billing_address_line1 = addr['line1']
+            self.billing_address_line2 = addr['line2']
+            self.billing_address_zip = addr['postal_code']
+            self.billing_address_city = addr['city']
+            self.billing_address_state = addr['state']
+            self.billing_address_country = addr['country']
 
     def update_stripe_billing_details(self, **kwargs):
         kwargs.update(self._get_billing_details_stripe_params())
