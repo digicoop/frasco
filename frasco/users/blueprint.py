@@ -171,22 +171,15 @@ def signup():
             if not check_rate_limit(request.remote_addr, 'signup_from', 'signup_at'):
                 raise UserValidationFailedError()
 
-            if state.options['recaptcha_secret'] and not current_app.debug and not current_app.testing:
+            if state.captcha_validator and (not current_app.debug and not current_app.testing or state.options['debug_captcha']):
                 is_captcha_success = False
-                if 'g-recaptcha-response' in request.form:
-                    try:
-                        r = requests.post('https://www.google.com/recaptcha/api/siteverify', data={
-                            'secret': state.options['recaptcha_secret'],
-                            'response': request.form['g-recaptcha-response'],
-                            'remote_ip': request.remote_addr
-                        })
-                        is_captcha_success = r.ok and r.json().get('success')
-                    except:
-                        logger.exception("Error while checking recaptcha")
-                        is_captcha_success = False
+                try:
+                    is_captcha_success = state.captcha_validator()
+                except:
+                    logger.exception("Error while checking recaptcha")
                 if not is_captcha_success:
-                    if state.options['recaptcha_fail_message']:
-                        flash(state.options['recaptcha_fail_message'], 'error')
+                    if state.options['captcha_fail_message']:
+                        flash(state.options['captcha_fail_message'], 'error')
                     raise UserValidationFailedError()
 
             with transaction():

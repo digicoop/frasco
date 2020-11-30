@@ -5,6 +5,9 @@
   {% if app.extensions.frasco_users.options['recaptcha_key'] %}
   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   {% endif %}
+  {% if app.extensions.frasco_users.options['hcaptcha_key'] %}
+  <script src="https://hcaptcha.com/1/api.js" async defer></script>
+  {% endif %}
 {% endblock %}
 {% block users_content %}
 <{ form_tag form id="signup-form" }>
@@ -14,6 +17,9 @@
   {% endif %}
   {% if app.extensions.frasco_users.options['recaptcha_key'] %}
   <div class="g-recaptcha" data-sitekey="{{ app.extensions.frasco_users.options['recaptcha_key'] }}"></div>
+  {% endif %}
+  {% if app.extensions.frasco_users.options['hcaptcha_key'] %}
+  <div class="h-captcha" data-sitekey="{{ app.extensions.frasco_users.options['hcaptcha_key'] }}"></div>
   {% endif %}
   <{ form_btn _("Signup") }/>
 </{}>

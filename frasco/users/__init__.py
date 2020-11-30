@@ -13,6 +13,7 @@ from .tokens import *
 from .signals import *
 from .password import *
 from .blueprint import users_blueprint
+from . import captcha
 
 
 class FrascoUsersState(ExtensionState):
@@ -23,6 +24,7 @@ class FrascoUsersState(ExtensionState):
         self.override_builtin_user_validation = False
         self.login_validators = []
         self.password_validators = []
+        self.captcha_validator = None
 
 
 class FrascoUsers(Extension):
@@ -66,12 +68,16 @@ class FrascoUsers(Extension):
         "signup_form_class": SignupForm,
         "send_welcome_email": False,
         "login_user_on_signup": True,
-        "recaptcha_key": None,
-        "recaptcha_secret": None,
         "rate_limit_count": None,
         "rate_limit_period": 60,
         "redirect_after_signup": "index",
         "redirect_after_signup_disallowed": None, # go to login
+        # captcha
+        "debug_captcha": False,
+        "recaptcha_key": None,
+        "recaptcha_secret": None,
+        "hcaptcha_key": None,
+        "hcaptcha_secret": None,
         # reset password
         "reset_password_redirect": None, # redirect to url instead of reset password page
         "allow_reset_password": True,
@@ -123,7 +129,7 @@ class FrascoUsers(Extension):
         "oauth_user_denied_login": lazy_translate("Login was denied"),
         "oauth_user_already_exists_message": lazy_translate("This {provider} account has already been used on a different account"),
         "oauth_error": lazy_translate("An error occured while authentifying you with the remote provider"),
-        "recaptcha_fail_message": lazy_translate("The captcha validation has failed"),
+        "captcha_fail_message": lazy_translate("The captcha validation has failed"),
         "enable_admin": True
     }
 
@@ -141,6 +147,11 @@ class FrascoUsers(Extension):
         state.manager.login_view = state.options['login_view']
         state.manager.login_message_category = "error"
         populate_obj(state.manager, extract_unmatched_items(state.options, self.defaults))
+
+        if state.options['recaptcha_key']:
+            state.captcha_validator = captcha.validate_recaptcha
+        elif state.options['hcaptcha_key']:
+            state.captcha_validator = captcha.validate_hcaptcha
 
         if has_extension("frasco_mail", app):
             app.extensions.frasco_mail.add_templates_from_package(__name__)
