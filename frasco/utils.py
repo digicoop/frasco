@@ -75,6 +75,9 @@ def find_class_in_module(cls, clstypes):
         clstypes = (clstypes,)
 
     if inspect.ismodule(cls):
+        clsname = getattr(cls, '__frasco_extension__', None)
+        if clsname:
+            return getattr(cls, clsname)
         classes = find_classes_in_module(cls, clstypes)
         if not classes:
             raise ImportClassError('No extension class found in module')
@@ -82,7 +85,7 @@ def find_class_in_module(cls, clstypes):
             raise ImportClassError('Too many extension classes in module')
         return classes[0]
 
-    if not isinstance(cls, clstypes):
+    if not issubclass(cls, clstypes):
         raise ImportClassError("Wrong class type")
     return cls
 
