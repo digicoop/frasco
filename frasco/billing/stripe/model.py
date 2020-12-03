@@ -230,13 +230,18 @@ class StripeSubscriptionModelMixin(StripeModelMixin):
         item = dict(id=self.stripe_subscription['items']['data'][0].id, **kwargs)
         self.update_stripe_subscription(items=[item], **subscription_options)
 
-    def change_stripe_subscription_plan(self, plan, quantity=None, cancel_at_period_end=False, proration_behavior='create_prorations'):
-        kwargs = {'plan': plan,
-                  'quantity': quantity if quantity is not None else self.stripe_subscription_item['quantity']}
-        self.update_stripe_subscription_item(subscription_options={
+    def change_stripe_subscription_plan(self, plan, quantity=None, cancel_at_period_end=False, proration_behavior='create_prorations', coupon=None, **kwargs):
+        kwargs.update({
+            'plan': plan,
+            'quantity': quantity if quantity is not None else self.stripe_subscription_item['quantity']
+        })
+        kwargs.setdefault('subscription_options', {}).update({
             'cancel_at_period_end': cancel_at_period_end,
             'proration_behavior': proration_behavior
-        }, **kwargs)
+        })
+        if coupon:
+            kwargs['subscription_options']['coupon'] = coupon
+        self.update_stripe_subscription_item(**kwargs)
 
     def cancel_stripe_subscription(self, at_period_end=True):
         if at_period_end:
