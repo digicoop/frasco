@@ -9,7 +9,7 @@ import datetime
 
 
 __all__ = ('UserModelMixin', 'UserWithUsernameModelMixin', 'UserLastAccessAtModelMixin',
-           'UserOTPCodeMixin', 'UserLoginModelMixin')
+           'UserOTPCodeMixin', 'UserLoginModelMixin', 'UserEmailValidatedMixin')
 
 
 class UserModelMixin(UserMixin):
@@ -81,3 +81,8 @@ class UserLoginModelMixin(object):
     login_provider = db.Column(db.String)
     login_country = db.Column(db.String)
     login_user_agent = db.Column(db.String)
+
+
+class UserEmailValidatedMixin(object):
+    email_validated = db.Column(db.Boolean, default=False)
+    email_validated_at = db.Column(db.DateTime)

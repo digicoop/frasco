@@ -1,7 +1,8 @@
 from flask import request, flash, redirect, session, current_app, Blueprint
 from frasco.helpers import url_for
 from frasco.ext import get_extension_state
-from frasco.users.user import login_user, is_user_logged_in, current_user
+from frasco.users.user import login_user, is_user_logged_in, current_user, validate_user_email
+from frasco.users.model import UserEmailValidatedMixin
 from frasco.models import db
 from frasco.utils import populate_obj
 from frasco.tasks import get_current_job
@@ -153,7 +154,7 @@ def oauth_session_login(provider, token, redirect_url=None):
     return redirect(redirect_url)
 
 
-def oauth_login(provider, id_property, id_value, data, defaults, redirect_url=None, auto_associate_with_matching_email=False):
+def oauth_login(provider, id_property, id_value, data, defaults, redirect_url=None, auto_associate_with_matching_email=False, validate_email=True):
     """Execute a login via oauth. If no user exists, oauth_signup() will be called
     """
     state = get_extension_state('frasco_users')
@@ -171,22 +172,25 @@ def oauth_login(provider, id_property, id_value, data, defaults, redirect_url=No
         user = state.Model.query_by_email(defaults['email']).first()
     
     if not user:
-        return oauth_signup(provider, data, defaults, redirect_url=redirect_url)
+        return oauth_signup(provider, data, defaults, redirect_url=redirect_url, validate_email=validate_email)
     
     user.save_oauth_token_data(provider, data)
     if provider not in user.auth_providers:
         user.auth_providers.append(provider)
+    if validate_email and hasattr(user, 'email_validated') and not user.email_validated and user.email == defaults.get('email'):
+        validate_user_email(user)
     if not is_user_logged_in():
         login_user(user, provider=provider)
     return redirect(redirect_url)
 
 
-def oauth_signup(provider, data, defaults, redirect_url=None):
+def oauth_signup(provider, data, defaults, redirect_url=None, validate_email=True):
     """Start the signup process after having logged in via oauth
     """
     session["oauth_signup"] = provider
     session["oauth_data"] = data
     session["oauth_user_defaults"] = defaults
+    session["oauth_validate_email"] = validate_email
     if not redirect_url:
         redirect_url = request.args.get("next")
     return redirect(url_for('users.oauth_signup', next=redirect_url))
@@ -196,3 +200,4 @@ def clear_oauth_signup_session():
     session.pop("oauth_signup", None)
     session.pop("oauth_data", None)
     session.pop("oauth_user_defaults", None)
+    session.pop("oauth_validate_email", None)

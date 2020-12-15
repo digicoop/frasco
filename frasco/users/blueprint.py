@@ -1,5 +1,5 @@
 from flask import Blueprint, request, redirect, current_app, flash, session, render_template, abort, make_response
-from flask_login import logout_user
+from flask_login import logout_user, current_user
 from frasco.helpers import url_for
 from frasco.ext import get_extension_state, has_extension
 from frasco.utils import populate_obj, AttrDict
@@ -13,8 +13,8 @@ import logging
 from .forms import *
 from .auth import authenticate
 from .auth.oauth import clear_oauth_signup_session
-from .signals import user_signed_up
-from .user import is_user_logged_in, login_user, signup_user, UserValidationFailedError, check_rate_limit
+from .signals import user_signed_up, email_validated
+from .user import is_user_logged_in, login_user, signup_user, UserValidationFailedError, check_rate_limit, send_user_validation_email, validate_user_email
 from .password import generate_reset_password_token, update_password, validate_password, send_reset_password_token, PasswordValidationFailedError
 from .tokens import read_user_token, generate_user_token
 from .otp import verify_2fa
@@ -186,15 +186,14 @@ def signup():
                 user = state.Model()
                 populate_obj(user, session.get("oauth_user_defaults", {}))
                 signup_user(user, provider=session.get('oauth_signup'), send_signal=False, **form.data)
-
                 if is_oauth:
-                    user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
-                clear_oauth_signup_session()
+                    _save_oauth(user)
                 db.session.flush()
                 user_signed_up.send(user=user)
                 if state.options["login_user_on_signup"]:
                     login_user(user, provider=user.signup_provider)
 
+            clear_oauth_signup_session()
             return redirect(redirect_url)
         except (UserValidationFailedError, PasswordValidationFailedError):
             db.session.rollback()
@@ -215,7 +214,7 @@ def oauth_signup():
             user = state.Model()
             populate_obj(user, session.get("oauth_user_defaults", {}))
             signup_user(user, flash_messages=False, send_signal=False)
-            user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
+            _save_oauth(user)
             db.session.flush()
             user_signed_up.send(user=user)
             login_user(user, provider=session['oauth_signup'])
@@ -224,6 +223,12 @@ def oauth_signup():
 
     clear_oauth_signup_session()
     return redirect(request.args.get("next") or _make_redirect_url(state.options["redirect_after_login"]))
+
+
+def _save_oauth(user):
+    user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
+    if session.get("oauth_validate_email") and user.email == session.get("oauth_user_defaults", {}).get('email') and hasattr(user, 'email_validated'):
+        validate_user_email(user)
 
 
 @users_blueprint.route('/login/reset-password', methods=['GET', 'POST'])
@@ -271,7 +276,7 @@ def reset_password(token):
     msg = state.options["reset_password_success_message"]
     redirect_to = state.options["redirect_after_reset_password"]
 
-    user = read_user_token(token, salt='password-reset')
+    user = read_user_token(token, salt='password-reset', max_age=state.options['reset_password_ttl'])
     if not user:
         abort(404)
 
@@ -288,6 +293,37 @@ def reset_password(token):
                 return redirect(_make_redirect_url(redirect_to))
 
     return render_template("users/reset_password.html", form=form)
+
+
+@users_blueprint.route('/validate-email/send', methods=['POST'])
+def send_email_validation_email():
+    if not current_user.is_authenticated:
+        abort(401)
+
+    send_user_validation_email(current_user)
+
+    if request.values.get('next'):
+        return redirect(request.values['next'])
+
+    return 'ok'
+
+
+@users_blueprint.route('/validate-email/<token>', methods=['GET'])
+def validate_email(token):
+    state = get_extension_state('frasco_users')
+    msg = state.options["email_validation_success_message"]
+    redirect_to = state.options["redirect_after_email_validated"]
+
+    user = read_user_token(token, salt='validate-email', max_age=state.options['email_validation_ttl'])
+    if not user:
+        abort(404)
+
+    with transaction():
+        validate_user_email(user)
+
+    if msg:
+        flash(msg, "success")
+    return redirect(_make_redirect_url(redirect_to))
 
 
 def _make_redirect_url(value):

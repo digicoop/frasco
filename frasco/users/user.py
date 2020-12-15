@@ -9,8 +9,9 @@ from frasco.geoip import geolocate_country
 from contextlib import contextmanager
 from werkzeug.local import LocalProxy
 import datetime
-from .signals import user_signed_up
+from .signals import user_signed_up, email_validated
 from .password import update_password
+from .tokens import generate_user_token
 import logging
 
 
@@ -99,7 +100,7 @@ def login_user(user, *args, **kwargs):
     return True
     
 
-def signup_user(email_or_user, password=None, provider=None, flash_messages=True, send_signal=True, **kwargs):
+def signup_user(email_or_user, password=None, provider=None, flash_messages=True, send_signal=True, validate_email=False, **kwargs):
     state = get_extension_state('frasco_users')
     if isinstance(email_or_user, state.Model):
         user = email_or_user
@@ -126,6 +127,11 @@ def signup_user(email_or_user, password=None, provider=None, flash_messages=True
 
     db.session.add(user)
     db.session.flush()
+
+    if validate_email:
+        validate_user_email(user)
+    elif state.options['send_email_validation_email']:
+        send_user_validation_email(user)
 
     if state.options["send_welcome_email"]:
         from frasco.mail import send_mail
@@ -237,6 +243,23 @@ def validate_user(user, ignore_self=True, flash_messages=True, raise_error=True,
             return False
 
     return True
+
+
+def generate_email_validation_token(user):
+    return generate_user_token(user, salt="validate-email")
+
+
+def send_user_validation_email(user):
+    from frasco.mail import send_mail
+    token = generate_email_validation_token(user)
+    send_mail(user.email, "users/validate_email", user=user, token=token, locale=getattr(user, 'locale', None))
+    return token
+
+
+def validate_user_email(user):
+    user.email_validated = True
+    user.email_validated_at = datetime.datetime.utcnow()
+    email_validated.send(user)
 
 
 def check_rate_limit(ip, remote_addr_prop, date_prop, flash_message=True):

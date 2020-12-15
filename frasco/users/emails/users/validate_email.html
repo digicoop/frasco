@@ -1,0 +1,6 @@
+---
+subject: Validate your email
+---
+{% use_layout %}
+
+<{ mail_action_block label="Validate your email" url=url_for("users.validate_email", token=token, _external=True) }/>

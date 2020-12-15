@@ -1,6 +1,7 @@
 from frasco.ext import *
 from frasco.i18n import lazy_translate
 from frasco.utils import populate_obj, extract_unmatched_items
+from flask import render_template
 from flask_login import LoginManager, logout_user, login_required, login_url, login_fresh, confirm_login, fresh_login_required, user_logged_in
 import datetime
 import os
@@ -89,6 +90,11 @@ class FrascoUsers(Extension):
         "redirect_after_reset_password_token": False,
         "redirect_after_reset_password": "index",
         "redirect_after_reset_password_disallowed": "users.login",
+        # email validation
+        "redirect_after_email_validated": "index",
+        "email_validation_ttl": None,
+        "block_non_email_validated_users": False,
+        "send_email_validation_email": False,
         # logout
         "redirect_after_logout": "index",
         # oauth
@@ -130,6 +136,7 @@ class FrascoUsers(Extension):
         "oauth_user_already_exists_message": lazy_translate("This {provider} account has already been used on a different account"),
         "oauth_error": lazy_translate("An error occured while authentifying you with the remote provider"),
         "captcha_fail_message": lazy_translate("The captcha validation has failed"),
+        "email_validation_success_message": None,
         "enable_admin": True
     }
 
@@ -161,6 +168,12 @@ class FrascoUsers(Extension):
         @state.manager.user_loader
         def user_loader(id):
             return state.Model.query.get(id)
+
+        if state.options['block_non_email_validated_users']:
+            @app.before_request
+            def block_non_email_validated_users():
+                if current_user.is_authenticated and not current_user.email_validated:
+                    return render_template("users/non_email_validated_users_block_page.html")
 
     @ext_stateful_method
     def user_validator(self, state, func):
