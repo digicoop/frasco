@@ -1,5 +1,7 @@
-from flask import current_app, url_for as flask_url_for, Markup, request
+from flask import current_app, url_for as flask_url_for, Markup, request, session
 import functools
+import time
+from .utils import unknown_value
 
 
 def url_for(*args, **kwargs):
@@ -37,3 +39,18 @@ def inject_app_config(app, config, prefix=None):
         if prefix:
             k = "%s%s" % (prefix, k)
         app.config[k.upper()] = v
+
+
+def set_timestamped_session_value(key, value):
+    session[key] = (value, time.time())
+
+
+def get_timestamped_session_value(key, max_age, default=unknown_value):
+    if default is not unknown_value and key not in session:
+        return default
+    value, ts = session[key]
+    if time.time() - ts <= max_age:
+        return value
+    if default is not unknown_value:
+        return default
+    raise KeyError(key)
