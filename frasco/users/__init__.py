@@ -172,7 +172,8 @@ class FrascoUsers(Extension):
         if state.options['block_non_email_validated_users']:
             @app.before_request
             def block_non_email_validated_users():
-                if current_user.is_authenticated and not current_user.email_validated:
+                if current_user.is_authenticated and not current_user.email_validated and \
+                  request.endpoint not in ('users.logout', 'users.send_email_validation_email', 'users.validate_email'):
                     return render_template("users/non_email_validated_users_block_page.html")
 
     @ext_stateful_method
