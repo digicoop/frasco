@@ -6,7 +6,7 @@ import re
 import logging
 import uuid
 
-from .tokens import generate_user_token, read_user_token
+from .tokens import generate_user_token, read_user_token, TOKEN_NS_PASSWORD_RESET
 from .signals import reset_password_sent, password_updated
 
 
@@ -106,7 +106,7 @@ def update_password(user, password, skip_validation=False, **kwargs):
 
 
 def generate_reset_password_token(user):
-    return generate_user_token(user, salt="password-reset")
+    return generate_user_token(user, TOKEN_NS_PASSWORD_RESET)
 
 
 def send_reset_password_token(user):

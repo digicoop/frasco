@@ -1,4 +1,4 @@
-from flask import Blueprint, request, redirect, current_app, flash, session, render_template, abort, make_response
+from flask import Blueprint, request, redirect, current_app, flash, session, render_template, abort, make_response, jsonify, get_flashed_messages
 from flask_login import logout_user, current_user
 from frasco.helpers import url_for
 from frasco.ext import get_extension_state, has_extension
@@ -9,6 +9,7 @@ from frasco.geoip import geolocate_country
 import datetime
 import requests
 import logging
+import re
 
 from .forms import *
 from .auth import authenticate
@@ -16,12 +17,48 @@ from .auth.oauth import clear_oauth_signup_session
 from .signals import user_signed_up, email_validated
 from .user import is_user_logged_in, login_user, signup_user, UserValidationFailedError, check_rate_limit, send_user_validation_email, validate_user_email
 from .password import generate_reset_password_token, update_password, validate_password, send_reset_password_token, PasswordValidationFailedError
-from .tokens import read_user_token, generate_user_token
+from .tokens import read_user_token, generate_user_token, TOKEN_NS_ACCESS_TOKEN, TOKEN_NS_2FA, TOKEN_NS_PASSWORD_RESET, TOKEN_NS_VALIDATE_EMAIL
 from .otp import verify_2fa
 
 
 users_blueprint = Blueprint("users", __name__, template_folder="templates")
 logger = logging.getLogger('frasco.users')
+
+
+LOGIN_FLOW_ACCESS_TOKEN = 'access_token'
+LOGIN_FLOW_WEB_ACCESS_TOKEN = 'web_access_token'
+
+
+def _is_programmatic_login():
+    return request.is_json or request.args.get('flow') == LOGIN_FLOW_ACCESS_TOKEN
+
+
+def _login_redirect(url, **kwargs):
+    if request.method == 'POST' and _is_programmatic_login():
+        kwargs.setdefault('errors', get_flashed_messages())
+        return jsonify(success=False, next=url, **kwargs)
+    return redirect(redirect_url)
+
+
+def _do_login(user, remember=None):
+    with transaction():
+        if "oauth_signup" in session:
+            user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
+        login_user(user, remember=remember, provider=session.get('oauth_signup'))
+        clear_oauth_signup_session()
+
+
+def _login_success():
+    state = get_extension_state('frasco_users')
+    redirect_url = request.args.get("next") or _make_redirect_url(state.options["redirect_after_login"])
+    if request.args.get('flow') == LOGIN_FLOW_WEB_ACCESS_TOKEN and state.options['enable_access_tokens'] and state.options['enable_access_tokens_web_flow']:
+        for allowed_url_pattern in state.options['access_tokens_web_flow_allowed_redirects']:
+            if re.match(allowed_url_pattern, redirect_url, re.I):
+                redirect_url += '#access_token=%s' % generate_user_token(user, TOKEN_NS_ACCESS_TOKEN)
+                break
+    if _is_programmatic_login():
+        return jsonify(success=True)
+    return redirect(redirect_url)
 
 
 @users_blueprint.route('/login', methods=['GET', 'POST'])
@@ -36,47 +73,60 @@ def login():
         clear_oauth_signup_session()
 
     is_oauth = "oauth_signup" in session
-    redirect_url = request.args.get("next") or _make_redirect_url(state.options["redirect_after_login"])
 
     if is_user_logged_in():
-        return redirect(redirect_url)
+        return _login_success()
 
     if not is_oauth and not request.args.get("no_redirect"):
         if state.options['login_redirect']:
-            return redirect(state.options['login_redirect'])
+            return _login_redirect(state.options['login_redirect'])
         if state.manager.login_view != "users.login":
-            return redirect(url_for(state.manager.login_view))
+            return _login_redirect(url_for(state.manager.login_view))
 
     if not state.options['allow_login']:
         if state.options["login_disallowed_message"]:
             flash(state.options["login_disallowed_message"], "error")
-        return redirect(url_for(state.options.get("redirect_after_login_disallowed") or\
+        return _login_redirect(url_for(state.options.get("redirect_after_login_disallowed") or \
             "users.login", next=request.args.get("next")))
 
-    form = state.import_option('login_form_class')()
-    if form.validate_on_submit():
-        user = authenticate(form.identifier.data, form.password.data)
+    form = state.import_option('login_form_class')(csrf_enabled=not _is_programmatic_login())
+    if request.method == 'POST':
+        user = None
+        if request.is_json:
+            try:
+                payload = request.get_json()
+            except:
+                return jsonify(success=False)
+            user = authenticate(payload.get('identifier'), payload.get('password'))
+        elif form.validate():
+            user = authenticate(form.identifier.data, form.password.data)
+
         if user:
             if (state.options['expire_password_after'] and user.last_password_change_at and \
-            (datetime.datetime.utcnow() - user.last_password_change_at).total_seconds() > state.options['expire_password_after']) \
-            or user.must_reset_password_at_login:
+              (datetime.datetime.utcnow() - user.last_password_change_at).total_seconds() > state.options['expire_password_after']) \
+              or user.must_reset_password_at_login:
                 token = generate_reset_password_token(user)
                 flash(state.options['password_expired_message'], 'error')
-                return redirect(url_for('.reset_password', token=token))
+                return _login_redirect(url_for('.reset_password', token=token))
 
             if state.options['enable_2fa'] and user.two_factor_auth_enabled:
+                if _is_programmatic_login():
+                    return jsonify(success=False, require_2fa=True)
                 session['2fa'] = user.id
                 session['login_remember'] = form.remember.data
-                return redirect(url_for('.login_2fa'))
+                return redirect(url_for('.login_2fa', flow=request.args.get('flow')))
 
-            with transaction():
-                if is_oauth:
-                    user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
-                login_user(user, remember=form.remember.data, provider=session.get('oauth_signup'))
-                clear_oauth_signup_session()
-            return redirect(redirect_url)
+            _do_login(user, form.remember.data)
+
+            if state.options['enable_access_tokens'] and _is_programmatic_login():
+                return jsonify(success=True, access_token=generate_user_token(user, TOKEN_NS_ACCESS_TOKEN))
+            
+            return _login_success()
 
         flash(state.options['login_error_message'], 'error')
+
+        if _is_programmatic_login():
+            return jsonify(success=False, errors=get_flashed_messages())
 
     return render_template('users/login.html', form=form, is_oauth=is_oauth)
 
@@ -88,34 +138,24 @@ def login_2fa():
         return redirect(url_for('.login'))
 
     is_oauth = "oauth_signup" in session
-    redirect_url = request.args.get("next") or _make_redirect_url(state.options["redirect_after_login"])
-
-    if is_user_logged_in():
-        return redirect(redirect_url)
-
     remember_2fa_max_age = state.options['2fa_remember_days']*3600*24
 
     if request.cookies.get('remember_2fa'):
-        remember_user = read_user_token(request.cookies['remember_2fa'], '2fa', remember_2fa_max_age)
+        remember_user = read_user_token(request.cookies['remember_2fa'], TOKEN_NS_2FA, remember_2fa_max_age)
         user = state.Model.query.get(session.pop('2fa'))
         if remember_user == user:
-            with transaction():
-                login_user(user, remember=session.pop('login_remember'))
-            return redirect(redirect_url)
+            _do_login(user, session.pop('login_remember'))
+            return _login_success()
 
     form = state.import_option('login_2fa_form_class')()
     if form.validate_on_submit():
         user = state.Model.query.get(session.pop('2fa'))
         remember = session.pop('login_remember')
         if verify_2fa(user, form.code.data):
-            with transaction():
-                if is_oauth:
-                    user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
-                login_user(user, remember=remember, provider=session.get('oauth_signup'))
-                clear_oauth_signup_session()
-            r = make_response(redirect(redirect_url))
+            _do_login(user, remember)
+            r = make_response(_login_success())
             if form.remember.data:
-                r.set_cookie('remember_2fa', generate_user_token(user, '2fa'),
+                r.set_cookie('remember_2fa', generate_user_token(user, TOKEN_NS_2FA),
                     max_age=remember_2fa_max_age, **state.options['2fa_remember_cookie_options'])
             return r
         flash(state.options['login_2fa_error_message'], 'error')
@@ -276,7 +316,7 @@ def reset_password(token):
     msg = state.options["reset_password_success_message"]
     redirect_to = state.options["redirect_after_reset_password"]
 
-    user = read_user_token(token, salt='password-reset', max_age=state.options['reset_password_ttl'])
+    user = read_user_token(token, TOKEN_NS_PASSWORD_RESET, state.options['reset_password_ttl'])
     if not user:
         abort(404)
 
@@ -314,7 +354,7 @@ def validate_email(token):
     msg = state.options["email_validation_success_message"]
     redirect_to = state.options["redirect_after_email_validated"]
 
-    user = read_user_token(token, salt='validate-email', max_age=state.options['email_validation_ttl'])
+    user = read_user_token(token, TOKEN_NS_VALIDATE_EMAIL, state.options['email_validation_ttl'])
     if not user:
         abort(404)
 

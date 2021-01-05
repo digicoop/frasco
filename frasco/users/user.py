@@ -11,7 +11,7 @@ from werkzeug.local import LocalProxy
 import datetime
 from .signals import user_signed_up, email_validated
 from .password import update_password
-from .tokens import generate_user_token
+from .tokens import generate_user_token, TOKEN_NS_VALIDATE_EMAIL
 import logging
 
 
@@ -246,7 +246,7 @@ def validate_user(user, ignore_self=True, flash_messages=True, raise_error=True,
 
 
 def generate_email_validation_token(user):
-    return generate_user_token(user, salt="validate-email")
+    return generate_user_token(user, TOKEN_NS_VALIDATE_EMAIL)
 
 
 def send_user_validation_email(user):

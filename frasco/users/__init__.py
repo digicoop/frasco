@@ -11,6 +11,7 @@ from .model import *
 from .jinja_ext import *
 from .forms import *
 from .tokens import *
+from .tokens import TOKEN_NS_ACCESS_TOKEN
 from .signals import *
 from .password import *
 from .blueprint import users_blueprint
@@ -26,6 +27,11 @@ class FrascoUsersState(ExtensionState):
         self.login_validators = []
         self.password_validators = []
         self.captcha_validator = None
+        self.user_request_loaders = []
+
+    def user_request_loader(self, func):
+        self.user_request_loaders.append(func)
+        return func
 
 
 class FrascoUsers(Extension):
@@ -105,6 +111,11 @@ class FrascoUsers(Extension):
         # auth
         "disable_password_authentication": False,
         "default_auth_provider_name": "app",
+        # access tokens
+        "enable_access_tokens": False,
+        "access_tokens_ttl": None,
+        "enable_access_tokens_web_flow": True,
+        "access_tokens_web_flow_allowed_redirects": [],
         # messages
         "login_error_message": lazy_translate("Invalid email or password"),
         "login_disallowed_message": None,
@@ -168,6 +179,24 @@ class FrascoUsers(Extension):
         @state.manager.user_loader
         def user_loader(id):
             return state.Model.query.get(id)
+
+        @state.manager.request_loader
+        def request_loaders(request):
+            for loader in state.user_request_loaders:
+                user = loader(request)
+                if user:
+                    return user
+        
+        if state.options['enable_access_tokens']:
+            @state.user_request_loader
+            def access_token_user_loader(request):
+                access_token = request.args.get('access_token')
+                if 'Authorization' in request.headers:
+                    authz = request.headers['Authorization']
+                    if authz.startswith('Bearer '):
+                        access_token = authz[7:]
+                if access_token:
+                    return read_user_token(access_token, TOKEN_NS_ACCESS_TOKEN, state.options['access_tokens_ttl'])
 
         if state.options['block_non_email_validated_users']:
             @app.before_request

@@ -25,7 +25,7 @@ class FrascoApiKeyAuthentification(Extension):
         require_extension('frasco_users', app)
         state.Model = state.import_option('model')
 
-        @app.extensions.frasco_users.manager.request_loader
+        @app.extensions.frasco_users.user_request_loader
         def load_user_from_request(request):
             api_key = None
             if 'Authorization' in request.headers:
@@ -35,8 +35,6 @@ class FrascoApiKeyAuthentification(Extension):
                         api_key = base64.b64decode(authz[6:]).decode('utf-8').split(':')[0]
                     except:
                         return
-                elif authz.startswith('Bearer '):
-                    api_key = authz[7:]
             elif 'X-Api-Key' in request.headers:
                 api_key = request.headers['X-Api-Key']
             if not api_key:

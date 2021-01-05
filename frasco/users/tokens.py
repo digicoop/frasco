@@ -7,6 +7,12 @@ from werkzeug.local import LocalProxy
 __all__ = ('user_token_serializer', 'generate_user_token', 'read_user_token', 'read_user_token_or_404')
 
 
+TOKEN_NS_ACCESS_TOKEN = 'access-token'
+TOKEN_NS_2FA = '2fa'
+TOKEN_NS_PASSWORD_RESET = 'password-reset'
+TOKEN_NS_VALIDATE_EMAIL = 'validate-email'
+
+
 def get_user_token_serializer():
     return URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
 
