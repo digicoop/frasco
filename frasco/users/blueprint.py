@@ -54,7 +54,7 @@ def _login_success():
     if request.args.get('flow') == LOGIN_FLOW_WEB_ACCESS_TOKEN and state.options['enable_access_tokens'] and state.options['enable_access_tokens_web_flow']:
         for allowed_url_pattern in state.options['access_tokens_web_flow_allowed_redirects']:
             if re.match(allowed_url_pattern, redirect_url, re.I):
-                redirect_url += '#access_token=%s' % generate_user_token(user, TOKEN_NS_ACCESS_TOKEN)
+                redirect_url += '#access_token=%s' % generate_user_token(current_user, TOKEN_NS_ACCESS_TOKEN)
                 break
     if _is_programmatic_login():
         return jsonify(success=True)

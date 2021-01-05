@@ -20,14 +20,18 @@ def get_user_token_serializer():
 user_token_serializer = LocalProxy(get_user_token_serializer)
 
 
+def get_token_identifier_property():
+    return getattr(get_extension_state('frasco_users').Model, '__token_identifier_property__', 'id')
+
+
 def generate_user_token(user, salt=None):
-    return user_token_serializer.dumps(str(user.id), salt=salt)
+    return user_token_serializer.dumps(getattr(user, get_token_identifier_property()), salt=salt)
 
 
 def read_user_token(token, salt=None, max_age=None):
     try:
         user_id = user_token_serializer.loads(token, salt=salt, max_age=max_age)
-        return get_extension_state('frasco_users').Model.query.get(user_id)
+        return model.query.filter(getattr(get_extension_state('frasco_users').Model, get_token_identifier_property()) == user_id).first()
     except BadSignature:
         return None
 

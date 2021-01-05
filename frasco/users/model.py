@@ -6,10 +6,11 @@ from frasco.redis import redis
 from flask_login import UserMixin
 from sqlalchemy.dialects import postgresql
 import datetime
+import uuid
 
 
 __all__ = ('UserModelMixin', 'UserWithUsernameModelMixin', 'UserLastAccessAtModelMixin',
-           'UserOTPCodeMixin', 'UserLoginModelMixin', 'UserEmailValidatedMixin')
+           'UserOTPCodeMixin', 'UserLoginModelMixin', 'UserEmailValidatedMixin', 'UserAuthTokenMixin')
 
 
 class UserModelMixin(UserMixin):
@@ -86,3 +87,25 @@ class UserLoginModelMixin(object):
 class UserEmailValidatedMixin(object):
     email_validated = db.Column(db.Boolean, default=False)
     email_validated_at = db.Column(db.DateTime)
+
+
+class UserAuthTokenMixin(object):
+    __token_identifier_property__ = 'auth_token'
+    __session_cookie_identifier__ = 'auth_token'
+
+    auth_token = db.Column(db.String, default=uuid.uuid4, unique=True)
+
+    @classmethod
+    def query_by_auth_token(cls, token):
+        return cls.query.filter(cls.auth_token == token)
+
+    @classmethod
+    def get_by_auth_token(cls, token):
+        return cls.query_by_auth_token(token).first()
+
+    def get_id(self):
+        # for Flask-Login
+        return self.auth_token
+
+    def invalidate_auth_token(self):
+        self.auth_token = uuid.uuid4()

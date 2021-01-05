@@ -178,7 +178,7 @@ class FrascoUsers(Extension):
 
         @state.manager.user_loader
         def user_loader(id):
-            return state.Model.query.get(id)
+            return state.Model.query.filter(getattr(state.Model, getattr(state.Model, '__session_cookie_identifier__', 'id')) == id).first()
 
         @state.manager.request_loader
         def request_loaders(request):
