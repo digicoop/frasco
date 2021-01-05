@@ -37,7 +37,7 @@ def _login_redirect(url, **kwargs):
     if request.method == 'POST' and _is_programmatic_login():
         kwargs.setdefault('errors', get_flashed_messages())
         return jsonify(success=False, next=url, **kwargs)
-    return redirect(redirect_url)
+    return redirect(url)
 
 
 def _do_login(user, remember=None):
@@ -89,7 +89,7 @@ def login():
         return _login_redirect(url_for(state.options.get("redirect_after_login_disallowed") or \
             "users.login", next=request.args.get("next")))
 
-    form = state.import_option('login_form_class')(csrf_enabled=not _is_programmatic_login())
+    form = state.import_option('login_form_class')(meta={'csrf': current_app.config.get('WTF_CSRF_ENABLED', True) and not _is_programmatic_login()})
     if request.method == 'POST':
         user = None
         if request.is_json:
