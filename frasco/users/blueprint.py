@@ -48,15 +48,15 @@ def _do_login(user, remember=None):
         clear_oauth_signup_session()
 
 
-def _login_success():
+def _login_success(opt_redirect='redirect_after_login', allow_programmatic=True):
     state = get_extension_state('frasco_users')
-    redirect_url = request.args.get("next") or _make_redirect_url(state.options["redirect_after_login"])
+    redirect_url = request.args.get("next") or _make_redirect_url(state.options[opt_redirect])
     if request.args.get('flow') == LOGIN_FLOW_WEB_ACCESS_TOKEN and state.options['enable_access_tokens'] and state.options['enable_access_tokens_web_flow']:
         for allowed_url_pattern in state.options['access_tokens_web_flow_allowed_redirects']:
             if re.match(allowed_url_pattern, redirect_url, re.I):
                 redirect_url += '#access_token=%s' % generate_user_token(current_user, TOKEN_NS_ACCESS_TOKEN)
                 break
-    if _is_programmatic_login():
+    if allow_programmatic and _is_programmatic_login():
         return jsonify(success=True)
     return redirect(redirect_url)
 
@@ -135,7 +135,7 @@ def login():
 def login_2fa():
     state = get_extension_state('frasco_users')
     if not state.options['enable_2fa'] or not session.get('2fa'):
-        return redirect(url_for('.login'))
+        return redirect(url_for('.login', flow=request.args.get('flow')))
 
     is_oauth = "oauth_signup" in session
     remember_2fa_max_age = state.options['2fa_remember_days']*3600*24
@@ -159,7 +159,7 @@ def login_2fa():
                     max_age=remember_2fa_max_age, **state.options['2fa_remember_cookie_options'])
             return r
         flash(state.options['login_2fa_error_message'], 'error')
-        return redirect(url_for('.login'))
+        return redirect(url_for('.login', flow=request.args.get('flow')))
 
     return render_template('users/login_2fa.html', form=form, is_oauth=is_oauth)
 
@@ -182,9 +182,8 @@ def signup():
         # didn't complete the process
         clear_oauth_signup_session()
 
-    redirect_url = request.args.get("next") or _make_redirect_url(state.options["redirect_after_signup"])
     if is_user_logged_in():
-        return redirect(redirect_url)
+        return _login_success('redirect_after_signup', False)
 
     if state.options['signup_redirect']:
         return redirect(state.options['signup_redirect'])
@@ -234,7 +233,7 @@ def signup():
                     login_user(user, provider=user.signup_provider)
 
             clear_oauth_signup_session()
-            return redirect(redirect_url)
+            return _login_success('redirect_after_signup', False)
         except (UserValidationFailedError, PasswordValidationFailedError):
             db.session.rollback()
 
@@ -247,7 +246,7 @@ def oauth_signup():
     state = get_extension_state('frasco_users')
     if "oauth_signup" not in session or state.options["oauth_must_signup"]:
         oauth = 1 if state.options["oauth_must_signup"] else 0
-        return redirect(url_for(".signup", oauth=oauth, next=request.args.get("next")))
+        return redirect(url_for(".signup", oauth=oauth, flow=request.args.get('flow'), next=request.args.get("next")))
 
     try:
         with transaction():
@@ -259,10 +258,10 @@ def oauth_signup():
             user_signed_up.send(user=user)
             login_user(user, provider=session['oauth_signup'])
     except UserValidationFailedError:
-        return redirect(url_for(".signup", oauth=1, next=request.args.get("next")))
+        return redirect(url_for(".signup", oauth=1, flow=request.args.get('flow'), next=request.args.get("next")))
 
     clear_oauth_signup_session()
-    return redirect(request.args.get("next") or _make_redirect_url(state.options["redirect_after_login"]))
+    return _login_success()
 
 
 def _save_oauth(user):

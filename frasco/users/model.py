@@ -93,7 +93,7 @@ class UserAuthTokenMixin(object):
     __token_identifier_property__ = 'auth_token'
     __session_cookie_identifier__ = 'auth_token'
 
-    auth_token = db.Column(db.String, default=uuid.uuid4, unique=True)
+    auth_token = db.Column(db.String, default=lambda: str(uuid.uuid4()), unique=True)
 
     @classmethod
     def query_by_auth_token(cls, token):
@@ -108,4 +108,4 @@ class UserAuthTokenMixin(object):
         return self.auth_token
 
     def invalidate_auth_token(self):
-        self.auth_token = uuid.uuid4()
+        self.auth_token = str(uuid.uuid4())
