@@ -1,4 +1,4 @@
-from flask import has_request_context, _request_ctx_stack, flash, request, current_app
+from flask import has_request_context, _request_ctx_stack, flash, request, current_app, session
 import flask_login
 from flask_login.utils import _get_user
 from frasco.ext import get_extension_state, has_extension
@@ -66,6 +66,7 @@ def is_user_logged_in():
 def login_user(user, *args, **kwargs):
     state = get_extension_state('frasco_users')
     provider = kwargs.pop('provider', state.options['default_auth_provider_name'])
+    skip_session = kwargs.pop('skip_session', False)
 
     for validator in state.login_validators:
         if not validator(user):
@@ -73,6 +74,11 @@ def login_user(user, *args, **kwargs):
 
     if not flask_login.login_user(user, *args, **kwargs):
         return False
+
+    if skip_session:
+        # remove the _user_id set by flask-login
+        # this will prevent setting the remember cookie and won't maintain the login state to the next request
+        session.pop('_user_id', None)
 
     user.last_login_at = datetime.datetime.utcnow()
     user.last_login_from = request.remote_addr

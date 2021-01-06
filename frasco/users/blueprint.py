@@ -29,8 +29,12 @@ LOGIN_FLOW_ACCESS_TOKEN = 'access_token'
 LOGIN_FLOW_WEB_ACCESS_TOKEN = 'web_access_token'
 
 
+def _is_login_flow(flow):
+    return request.args.get('flow') == flow
+
+
 def _is_programmatic_login():
-    return request.is_json or request.args.get('flow') == LOGIN_FLOW_ACCESS_TOKEN
+    return request.is_json or _is_login_flow(LOGIN_FLOW_ACCESS_TOKEN)
 
 
 def _login_redirect(url, **kwargs):
@@ -44,14 +48,14 @@ def _do_login(user, remember=None):
     with transaction():
         if "oauth_signup" in session:
             user.save_oauth_token_data(session['oauth_signup'], session['oauth_data'])
-        login_user(user, remember=remember, provider=session.get('oauth_signup'))
+        login_user(user, remember=remember, provider=session.get('oauth_signup'), skip_session=_is_programmatic_login() or _is_login_flow(LOGIN_FLOW_WEB_ACCESS_TOKEN))
         clear_oauth_signup_session()
 
 
 def _login_success(opt_redirect='redirect_after_login', allow_programmatic=True):
     state = get_extension_state('frasco_users')
     redirect_url = request.args.get("next") or _make_redirect_url(state.options[opt_redirect])
-    if request.args.get('flow') == LOGIN_FLOW_WEB_ACCESS_TOKEN and state.options['enable_access_tokens'] and state.options['enable_access_tokens_web_flow']:
+    if _is_login_flow(LOGIN_FLOW_WEB_ACCESS_TOKEN) and request.args.get("next") and state.options['enable_access_tokens'] and state.options['enable_access_tokens_web_flow']:
         for allowed_url_pattern in state.options['access_tokens_web_flow_allowed_redirects']:
             if re.match(allowed_url_pattern, redirect_url, re.I):
                 redirect_url += '#access_token=%s' % generate_user_token(current_user, TOKEN_NS_ACCESS_TOKEN)
