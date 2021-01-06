@@ -31,7 +31,8 @@ def generate_user_token(user, salt=None):
 def read_user_token(token, salt=None, max_age=None):
     try:
         user_id = user_token_serializer.loads(token, salt=salt, max_age=max_age)
-        return model.query.filter(getattr(get_extension_state('frasco_users').Model, get_token_identifier_property()) == user_id).first()
+        model = get_extension_state('frasco_users').Model
+        return model.query.filter(getattr(model, get_token_identifier_property()) == user_id).first()
     except BadSignature:
         return None
 
