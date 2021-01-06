@@ -234,7 +234,7 @@ def signup():
                 db.session.flush()
                 user_signed_up.send(user=user)
                 if state.options["login_user_on_signup"]:
-                    login_user(user, provider=user.signup_provider)
+                    login_user(user, provider=user.signup_provider, skip_session=_is_programmatic_login() or _is_login_flow(LOGIN_FLOW_WEB_ACCESS_TOKEN))
 
             clear_oauth_signup_session()
             return _login_success('redirect_after_signup', False)
