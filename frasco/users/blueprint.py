@@ -85,16 +85,18 @@ def login():
         if state.options['login_redirect']:
             return _login_redirect(state.options['login_redirect'])
         if state.manager.login_view != "users.login":
-            return _login_redirect(url_for(state.manager.login_view))
+            return _login_redirect(url_for(state.manager.login_view, next=request.args.get("next")))
+
+    form = state.import_option('login_form_class')(meta={'csrf': current_app.config.get('WTF_CSRF_ENABLED', True) and not _is_programmatic_login()})
 
     if not state.options['allow_login']:
         if state.options["login_disallowed_message"]:
             flash(state.options["login_disallowed_message"], "error")
-        return _login_redirect(url_for(state.options.get("redirect_after_login_disallowed") or \
-            "users.login", next=request.args.get("next")))
-
-    form = state.import_option('login_form_class')(meta={'csrf': current_app.config.get('WTF_CSRF_ENABLED', True) and not _is_programmatic_login()})
-    if request.method == 'POST':
+        if request.method == 'POST' and _is_programmatic_login():
+            return jsonify(success=False, errors=get_flashed_messages())
+        if state.options.get("redirect_after_login_disallowed"):
+            return _login_redirect(_make_redirect_url(state.options.get("redirect_after_login_disallowed")))
+    elif request.method == 'POST':
         user = None
         if request.is_json:
             try:
@@ -118,7 +120,7 @@ def login():
                     return jsonify(success=False, require_2fa=True)
                 session['2fa'] = user.id
                 session['login_remember'] = form.remember.data
-                return redirect(url_for('.login_2fa', flow=request.args.get('flow')))
+                return redirect(url_for('.login_2fa', flow=request.args.get('flow'), next=request.args.get('next')))
 
             _do_login(user, form.remember.data)
 
@@ -139,7 +141,7 @@ def login():
 def login_2fa():
     state = get_extension_state('frasco_users')
     if not state.options['enable_2fa'] or not session.get('2fa'):
-        return redirect(url_for('.login', flow=request.args.get('flow')))
+        return redirect(url_for('.login', flow=request.args.get('flow'), next=request.args.get('next')))
 
     is_oauth = "oauth_signup" in session
     remember_2fa_max_age = state.options['2fa_remember_days']*3600*24
@@ -163,7 +165,7 @@ def login_2fa():
                     max_age=remember_2fa_max_age, **state.options['2fa_remember_cookie_options'])
             return r
         flash(state.options['login_2fa_error_message'], 'error')
-        return redirect(url_for('.login', flow=request.args.get('flow')))
+        return redirect(url_for('.login', flow=request.args.get('flow'), next=request.args.get('next')))
 
     return render_template('users/login_2fa.html', form=form, is_oauth=is_oauth)
 
