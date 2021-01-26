@@ -19,7 +19,6 @@ EU_COUNTRIES = {
     "ES": "EUR", # Spain
     "FI": "EUR", # Finland
     "FR": "EUR", # France,
-    "GB": "GBP", # Great Britain
     "GR": "EUR", # Greece
     "HR": "HRK", # Croatia
     "HU": "HUF", # Hungary
@@ -51,7 +50,6 @@ KNOWN_VAT_RATES = {
     "ES": 21.0, # Spain
     "FI": 24.0, # Finland
     "FR": 20.0, # France,
-    "GB": 20.0, # Great Britain
     "GR": 23.0, # Greece
     "HR": 25.0, # Croatia
     "HU": 27.0, # Hungary
