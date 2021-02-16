@@ -143,6 +143,9 @@ class RedisSet(RedisObject):
         for value in self.redis.smembers(self.key):
             yield self._from_redis(value)
 
+    def __len__(self):
+        return self.redis.scard(self.key)
+
     def __contains__(self, value):
         return self.redis.ismember(self.key, value)
 
