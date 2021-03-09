@@ -92,7 +92,7 @@ class FrascoUsers(Extension):
         "send_reset_password_form_class": SendResetPasswordForm,
         "reset_password_form_class": ResetPasswordForm,
         "send_reset_password_email": True,
-        "reset_password_ttl": 86400,
+        "reset_password_ttl": 3600, # 1h
         "login_user_on_reset_password": True,
         "redirect_after_reset_password_token": False,
         "redirect_after_reset_password": "index",
