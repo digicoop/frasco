@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='2.2.7',
+    version='2.3.0',
     url='http://github.com/frascoweb/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -37,6 +37,7 @@ setup(
         'eventlet~=0.25.1',
         'Flask~=1.1.1',
         'Flask-Assets==2.0',
+        'Flask-CDN~=1.5.3',
         'Flask-Babel~=1.0.0',
         'Flask-Bcrypt~=0.7.1',
         'Flask-CORS~=3.0.8',
@@ -68,7 +69,7 @@ setup(
         'suds-py3~=1.4.1.0',
         'speaklater~=1.3',
         'stripe~=2.42.0',
-        'werkzeug>=1.0.0',
+        'werkzeug~=1.0.1',
     ],
     entry_points='''
         [console_scripts]

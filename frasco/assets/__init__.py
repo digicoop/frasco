@@ -1,5 +1,6 @@
 from frasco.ext import *
 from flask_assets import Environment, _webassets_cmd
+from flask_cdn import CDN
 from flask import Blueprint, current_app
 from flask.cli import with_appcontext, cli
 from flask.signals import Namespace as SignalNamespace
@@ -28,8 +29,12 @@ class FrascoAssets(Extension):
                 'copy_files_from_js_packages': {}}
 
     def _init_app(self, app, state):
+        app.config.update({'CDN_%s' % k.upper(): v for k, v in app.config.get_namespace('ASSETS_CDN_').items()})
+        app.config['FLASK_ASSETS_USE_CDN'] = bool(app.config.get('CDN_DOMAIN'))
+        
         state.env = Environment(app)
         state.env.debug = app.debug
+        state.cdn = CDN(app)
         app.jinja_env.macros.register_file(os.path.join(os.path.dirname(__file__), "macros.html"), alias="frasco_assets.html")
 
         if state.options['copy_files_from_js_packages']:
