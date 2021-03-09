@@ -55,6 +55,7 @@ class FrascoUsers(Extension):
         "max_password_reuse_saved": None,
         "min_time_between_password_change": None,
         "expire_password_after": None,
+        "max_password_length": 500, # used to prevent DOS attacks
         # login
         "allow_login": True,
         "enable_2fa": False,
@@ -127,6 +128,7 @@ class FrascoUsers(Extension):
         "password_reused_message": lazy_translate("You cannot use a password which you have previously used"),
         "min_time_between_password_change_message": lazy_translate("You have changed your password too recently"),
         "validate_password_regexps_message": lazy_translate("The password does not respect the following rule: {rule}"),
+        "max_password_length_message": lazy_translate("The password is too long"),
         "must_provide_email_message": lazy_translate("An email address must be provided"),
         "signup_disallowed_message": None,
         "username_taken_message": lazy_translate("An account using the same username already exists"),

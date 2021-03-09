@@ -48,13 +48,20 @@ class PasswordValidationFailedError(Exception):
 def validate_password(user, password, flash_messages=True, raise_error=True):
     state = get_extension_state('frasco_users')
 
-    if state.options['min_time_between_password_change'] and user.last_password_change_at and not user.must_reset_password_at_login:
-        if (datetime.datetime.utcnow() - user.last_password_change_at).total_seconds() < state.options['min_time_between_password_change']:
-            if flash_messages and state.options['min_time_between_password_change_message']:
-                flash(state.options['min_time_between_password_change_message'], 'error')
-            if raise_error:
-                raise PasswordValidationFailedError("password_change_too_soon")
-            return False
+    if state.options['max_password_length'] and len(password) > state.options['max_password_length']:
+        if flash_messages and state.options['max_password_length_message']:
+            flash(state.options['max_password_length_message'], 'error')
+        if raise_error:
+            raise PasswordValidationFailedError("max_password_length")
+        return False
+
+    if state.options['min_time_between_password_change'] and user.last_password_change_at and not user.must_reset_password_at_login and \
+      (datetime.datetime.utcnow() - user.last_password_change_at).total_seconds() < state.options['min_time_between_password_change']:
+        if flash_messages and state.options['min_time_between_password_change_message']:
+            flash(state.options['min_time_between_password_change_message'], 'error')
+        if raise_error:
+            raise PasswordValidationFailedError("password_change_too_soon")
+        return False
 
     if state.options['validate_password_regexps']:
         for pattern, label in state.options['validate_password_regexps']:
