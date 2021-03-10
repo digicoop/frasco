@@ -1,6 +1,5 @@
 from frasco.ext import *
 from flask_assets import Environment as BaseEnvironment, FlaskResolver, _webassets_cmd
-from flask_cdn import CDN
 from flask import Blueprint, current_app, _request_ctx_stack, has_request_context
 from flask.cli import with_appcontext, cli
 from flask.signals import Namespace as SignalNamespace
