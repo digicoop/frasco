@@ -5,9 +5,12 @@ import json
 
 
 def generate_cache_service_worker(cache_name, assets, dynamic_urls=None, template_filename=None,
-                            offline_fallback=None, offline_fallback_ignore_paths=None):
+                            offline_fallback=None, offline_fallback_ignore_paths=None, domains=None):
     if not template_filename:
         template_filename = os.path.join(os.path.dirname(__file__), 'service-worker.js')
+
+    if not domains:
+        domains = [current_app.config['SERVER_NAME']]
 
     files = []
     for asset_name in assets:
@@ -18,7 +21,7 @@ def generate_cache_service_worker(cache_name, assets, dynamic_urls=None, templat
 
     sw = "\n".join([
         'const CACHE_NAME = "%s";' % cache_name,
-        'const CACHE_DOMAIN = "%s";' % current_app.config['SERVER_NAME'],
+        'const CACHE_DOMAINS = %s;' % json.dumps(domains),
         'const CACHE_FILES = %s;' % json.dumps(files),
         'const CACHE_DYNAMIC_URLS = %s' % json.dumps(dynamic_urls or []),
         'const CACHE_OFFLINE_FALLBACK = "%s";' % offline_fallback,

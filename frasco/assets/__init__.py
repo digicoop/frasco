@@ -149,7 +149,7 @@ def copy_files_from_js_packages(files):
 
 
 def cdn_url_for(endpoint, **values):
-    state = get_extension_state('frasco_assets')
+    state = get_extension_state('frasco_assets', app=values.pop('_app', None))
     if state.options.get('cdn_domain') and is_cdn_endpoint(endpoint):
         try:
             scheme = values.pop('_scheme')
