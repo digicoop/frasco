@@ -1,9 +1,10 @@
 from frasco.ext import *
-from flask_assets import Environment, _webassets_cmd
+from flask_assets import Environment as BaseEnvironment, FlaskResolver, _webassets_cmd
 from flask_cdn import CDN
-from flask import Blueprint, current_app
+from flask import Blueprint, current_app, _request_ctx_stack, has_request_context
 from flask.cli import with_appcontext, cli
 from flask.signals import Namespace as SignalNamespace
+from ..helpers import url_for as frasco_url_for
 import logging
 import click
 import os
@@ -16,6 +17,34 @@ after_clean_assets = _signals.signal('before_clean_assets')
 auto_build_assets = _signals.signal('auto_build_assets')
 
 
+class Resolver(FlaskResolver):
+    """We override the convert_item_to_flask_url() to use our own url_for()"""
+    def convert_item_to_flask_url(self, ctx, item, filepath=None):
+        directory, rel_path, endpoint = self.split_prefix(ctx, item)
+
+        if filepath is not None:
+            filename = filepath[len(directory)+1:]
+        else:
+            filename = rel_path
+
+        flask_ctx = None
+        if not _request_ctx_stack.top:
+            flask_ctx = ctx.environment._app.test_request_context()
+            flask_ctx.push()
+        try:
+            url = cdn_url_for(endpoint, filename=filename)
+            if url and url.startswith('http:'):
+                url = url[5:]
+            return url
+        finally:
+            if flask_ctx:
+                flask_ctx.pop()
+
+
+class Environment(BaseEnvironment):
+    resolver_class = Resolver
+
+
 class FrascoAssetsState(ExtensionState):
     def register(self, *args, **kwargs):
         return self.env.register(*args, **kwargs)
@@ -26,15 +55,15 @@ class FrascoAssets(Extension):
     state_class = FrascoAssetsState
     prefix_extra_options = 'ASSETS_'
     defaults = {'js_packages_path': {},
-                'copy_files_from_js_packages': {}}
+                'copy_files_from_js_packages': {},
+                'cdn_scheme': 'https',
+                'cdn_endpoints': ['static']}
 
     def _init_app(self, app, state):
-        app.config.update({'CDN_%s' % k.upper(): v for k, v in app.config.get_namespace('ASSETS_CDN_').items()})
-        app.config['FLASK_ASSETS_USE_CDN'] = bool(app.config.get('CDN_DOMAIN'))
-        
         state.env = Environment(app)
         state.env.debug = app.debug
-        state.cdn = CDN(app)
+        app.jinja_env.globals['url_for'] = cdn_url_for
+        app.jinja_env.globals['url_for_static'] = cdn_url_for_static
         app.jinja_env.macros.register_file(os.path.join(os.path.dirname(__file__), "macros.html"), alias="frasco_assets.html")
 
         if state.options['copy_files_from_js_packages']:
@@ -118,3 +147,32 @@ def copy_files_from_js_packages(files):
             if not os.path.exists(os.path.dirname(target)):
                 os.makedirs(os.path.dirname(target))
             shutil.copyfile(filename, target)
+
+
+def cdn_url_for(endpoint, **values):
+    state = get_extension_state('frasco_assets')
+    if state.options.get('cdn_domain') and is_cdn_endpoint(endpoint):
+        try:
+            scheme = values.pop('_scheme')
+        except KeyError:
+            scheme = state.options['cdn_scheme']
+        urls = current_app.url_map.bind(state.options['cdn_domain'], url_scheme=scheme)
+        return urls.build(endpoint, values=values, force_external=True)
+
+    return frasco_url_for(endpoint, **values)
+
+
+def cdn_url_for_static(filename, **kwargs):
+    """Shortcut function for url_for('static', filename=filename)
+    """
+    return cdn_url_for('static', filename=filename, **kwargs)
+
+
+def is_cdn_endpoint(endpoint):
+    cdn_endpoints = get_extension_state('frasco_assets').options['cdn_endpoints']
+    if endpoint in cdn_endpoints:
+        return True
+    for x in cdn_endpoints:
+        if endpoint.endswith('.%s' % x):
+            return True
+    return False
