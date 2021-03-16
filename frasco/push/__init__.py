@@ -122,9 +122,7 @@ def create_push_token(user_info=None, user_room=None, allowed_rooms=None):
 
 
 @delayed_tx_calls.proxy
-def emit_push_event(event, data=None, skip_self=None, room=None, namespace=None, prefix_event_with_room=True):
-    if suppress_push_events.top:
-        return
+def _emit_push_event(event, data=None, skip_self=None, room=None, namespace=None, prefix_event_with_room=True):
     state = get_extension_state('frasco_push')
     if current_app.testing and testing_push_events.top is not None:
         testing_push_events.top.append((event, data, skip_self, room, namespace))
@@ -141,6 +139,12 @@ def emit_push_event(event, data=None, skip_self=None, room=None, namespace=None,
     # we are publishing the events ourselves rather than using socketio.RedisManager because
     # importing socketio while using flask debugger causes an error due to signals
     return state.redis.publish(state.options['channel'], format_emit_data(event, data, namespace, room, skip_sid))
+
+
+def emit_push_event(event, data=None, skip_self=None, room=None, namespace=None, prefix_event_with_room=True):
+    if suppress_push_events.top:
+        return
+    return _emit_push_event(event, data=data, skip_self=skip_self, room=room, namespace=namespace, prefix_event_with_room=prefix_event_with_room)
 
 
 def emit_user_push_event(user_id, event, data=None, **kwargs):
