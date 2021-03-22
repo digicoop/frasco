@@ -1,11 +1,24 @@
 from flask import has_app_context, current_app, has_request_context, session, request
 from frasco.users import user_login_context, is_user_logged_in, current_user
 from frasco.utils import import_string
+from frasco.ctx import ContextStack
 from flask_rq2.job import FlaskJob
 from rq.job import UNEVALUATED, dumps, Job as RQJob
+from contextlib import contextmanager
 
 
-def pack_task_args(data):
+prevent_circular_task_ctx = ContextStack()
+
+
+@contextmanager
+def prevent_circular_task(ctx_id):
+    if ctx_id in prevent_circular_task_ctx.stack:
+        return
+    with prevent_circular_task_ctx(ctx_id):
+        yield
+
+
+def pack_job_args(data):
     """Traverse data and converts every object with a __taskdump__() method
     """
     if hasattr(data, "__taskdump__"):
@@ -16,24 +29,24 @@ def pack_task_args(data):
     if isinstance(data, (list, tuple)):
         lst = []
         for item in data:
-            lst.append(pack_task_args(item))
+            lst.append(pack_job_args(item))
         return lst
     if isinstance(data, dict):
         dct = {}
         for k, v in data.items():
-            dct[k] = pack_task_args(v)
+            dct[k] = pack_job_args(v)
         return dct
     return data
 
 
-def unpack_task_args(data):
+def unpack_job_args(data):
     """Traverse data and transforms back objects which where dumped
     using __taskdump()
     """
     if isinstance(data, (list, tuple)):
         lst = []
         for item in data:
-            lst.append(unpack_task_args(item))
+            lst.append(unpack_job_args(item))
         return lst
     if isinstance(data, dict):
         if "$taskobj" in data:
@@ -42,7 +55,7 @@ def unpack_task_args(data):
         else:
             dct = {}
             for k, v in data.items():
-                dct[k] = unpack_task_args(v)
+                dct[k] = unpack_job_args(v)
             return dct
     return data
 
@@ -51,6 +64,7 @@ class FrascoJob(FlaskJob):
     @classmethod
     def create(cls, func, *args, **kwargs):
         job = super(FrascoJob, cls).create(func, *args, **kwargs)
+        job.meta.setdefault('forwarded_contexts', {})['frasco.tasks.job.prevent_circular_task_ctx'] = prevent_circular_task_ctx.stack
         if is_user_logged_in():
             job.meta['current_user_id'] = current_user.id
         if has_request_context():
@@ -73,12 +87,12 @@ class FrascoJob(FlaskJob):
             if self._args is UNEVALUATED:
                 args = ()
             else:
-                args = pack_task_args(self._args)
+                args = pack_job_args(self._args)
 
             if self._kwargs is UNEVALUATED:
                 kwargs = {}
             else:
-                kwargs = pack_task_args(self._kwargs)
+                kwargs = pack_job_args(self._kwargs)
 
             job_tuple = self._func_name, self._instance, args, kwargs
             self._data = dumps(job_tuple)
@@ -97,15 +111,25 @@ class FrascoJob(FlaskJob):
         if not app.config.get('RQ_ASYNC'):
             return self.perform_in_app_context()
         with app.app_context():
-            return self.perform_in_app_context()
+            rv = self.perform_in_app_context()
+        return rv
 
     def perform_in_app_context(self):
-        current_user_id = self.meta.get('current_user_id')
-        if current_user_id and not is_user_logged_in(): # user is already logged in if task is async=False
-            with user_login_context(current_app.extensions.frasco_users.Model.query.get(current_user_id)):
-                return RQJob.perform(self)
-        else:
-            return RQJob.perform(self)
+        if self.meta.get('forwarded_contexts'):
+            for ctx_import_str, stack in self.meta['forwarded_contexts']:
+                import_string(ctx_import_str).stack.extend(stack)
+        try:
+            current_user_id = self.meta.get('current_user_id')
+            if current_user_id and not is_user_logged_in(): # user is already logged in if task is async=False
+                with user_login_context(current_app.extensions.frasco_users.Model.query.get(current_user_id)):
+                    rv = RQJob.perform(self)
+            else:
+                rv = RQJob.perform(self)
+        finally:
+            if self.meta.get('forwarded_contexts'):
+                for ctx_import_str, stack in self.meta['forwarded_contexts']:
+                    del import_string(ctx_import_str).stack[-len(stack):]
+        return rv
 
     def _execute(self):
-        return self.func(*unpack_task_args(self.args), **unpack_task_args(self.kwargs))
+        return self.func(*unpack_job_args(self.args), **unpack_job_args(self.kwargs))

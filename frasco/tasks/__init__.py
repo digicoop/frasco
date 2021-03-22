@@ -1,17 +1,19 @@
 from frasco.ext import *
 from frasco.utils import import_string
 from frasco.models import delayed_tx_calls
+from frasco.ctx import ContextStack
 from flask_rq2 import RQ
 from flask_rq2 import cli
 from rq import get_current_job
 from rq.timeouts import JobTimeoutException
-from .job import FrascoJob
+from .job import FrascoJob, prevent_circular_task
 import redis.exceptions
 import functools
 import logging
 
 
 logger = logging.getLogger('frasco.tasks')
+synchronous_tasks = ContextStack(False, True, ignore_nested=True)
 
 
 class FrascoTasks(Extension):
@@ -44,9 +46,16 @@ def enqueue_now(func, **options):
     if getattr(func, '__task_options__', None):
         options.update(func.__task_options__)
     queue_name = options.pop('queue', None)
+    forward_contexts = options.pop('forward_contexts', None)
+    if forward_contexts:
+        options.setdefault('meta', {})['forwarded_contexts'] = {ctx: import_string(ctx).stack for ctx in forward_contexts}
     if callable(queue_name):
         queue_name = queue_name()
-    return get_extension_state('frasco_tasks').rq.get_queue(queue_name).enqueue_call(func, **options)
+    queue = get_extension_state('frasco_tasks').rq.get_queue(queue_name)
+    if synchronous_tasks.top and queue._async:
+        job = queue.create_job(func, **options)
+        return queue.run_job(job)
+    return queue.enqueue_call(func, **options)
 
 
 def enqueue_task(func, *args, **kwargs):
