@@ -116,7 +116,7 @@ class FrascoJob(FlaskJob):
 
     def perform_in_app_context(self):
         if self.meta.get('forwarded_contexts'):
-            for ctx_import_str, stack in self.meta['forwarded_contexts']:
+            for ctx_import_str, stack in self.meta['forwarded_contexts'].items():
                 import_string(ctx_import_str).stack.extend(stack)
         try:
             current_user_id = self.meta.get('current_user_id')
@@ -127,7 +127,7 @@ class FrascoJob(FlaskJob):
                 rv = RQJob.perform(self)
         finally:
             if self.meta.get('forwarded_contexts'):
-                for ctx_import_str, stack in self.meta['forwarded_contexts']:
+                for ctx_import_str, stack in self.meta['forwarded_contexts'].items():
                     del import_string(ctx_import_str).stack[-len(stack):]
         return rv
 

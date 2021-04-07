@@ -2,7 +2,7 @@ from flask import g, has_request_context, request, current_app
 from frasco.ext import *
 from frasco.users import is_user_logged_in, current_user
 from frasco.models import delayed_tx_calls
-from frasco.ctx import ContextStack
+from frasco.ctx import ContextStack, DelayedCallsContext
 from frasco.assets import expose_package
 from itsdangerous import URLSafeTimedSerializer
 from redis import Redis
@@ -16,6 +16,7 @@ import click
 
 
 suppress_push_events = ContextStack(False, default_item=True, ignore_nested=True)
+delayed_push_events = DelayedCallsContext()
 testing_push_events = ContextStack(None, list, ignore_nested=True)
 dont_skip_self_push_events = ContextStack(False, default_item=True, ignore_nested=True)
 logger = logging.getLogger('frasco.push')
@@ -121,6 +122,7 @@ def create_push_token(user_info=None, user_room=None, allowed_rooms=None):
     return get_extension_state('frasco_push').token_serializer.dumps([user_info, user_room, allowed_rooms])
 
 
+@delayed_push_events.proxy
 @delayed_tx_calls.proxy
 def _emit_push_event(event, data=None, skip_self=None, room=None, namespace=None, prefix_event_with_room=True):
     state = get_extension_state('frasco_push')
