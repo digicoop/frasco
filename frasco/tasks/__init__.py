@@ -6,14 +6,13 @@ from flask_rq2 import RQ
 from flask_rq2 import cli
 from rq import get_current_job
 from rq.timeouts import JobTimeoutException
-from .job import FrascoJob, prevent_circular_task
+from .job import FrascoJob, prevent_circular_task, synchronous_tasks
 import redis.exceptions
 import functools
 import logging
 
 
 logger = logging.getLogger('frasco.tasks')
-synchronous_tasks = ContextStack(False, True, ignore_nested=True)
 
 
 class FrascoTasks(Extension):
@@ -52,7 +51,7 @@ def enqueue_now(func, **options):
     if callable(queue_name):
         queue_name = queue_name()
     queue = get_extension_state('frasco_tasks').rq.get_queue(queue_name)
-    if synchronous_tasks.top and queue._async:
+    if synchronous_tasks.calling_ctx.top:
         job = queue.create_job(func, **options)
         return queue.run_job(job)
     return queue.enqueue_call(func, **options)
@@ -62,6 +61,7 @@ def enqueue_task(func, *args, **kwargs):
     return enqueue(func, args=args, kwargs=kwargs)
 
 
+@synchronous_tasks.proxy
 @delayed_tx_calls.proxy
 def enqueue(func, **options):
     return enqueue_now(func, **options)

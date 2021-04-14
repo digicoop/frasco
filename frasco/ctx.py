@@ -67,8 +67,9 @@ delayed_result = object()
 
 
 class DelayedCallsContext(ContextStack):
-    def __init__(self):
-        super(DelayedCallsContext, self).__init__(default_item=list, ignore_nested=True)
+    def __init__(self, **kwargs):
+        self.calling_ctx = kwargs.pop('calling_ctx', ContextStack(default_item=True))
+        super(DelayedCallsContext, self).__init__(default_item=list, ignore_nested=True, **kwargs)
 
     def call(self, func, args, kwargs):
         if self.top is not None:
@@ -79,8 +80,9 @@ class DelayedCallsContext(ContextStack):
     def pop(self, drop_calls=False):
         top = super(DelayedCallsContext, self).pop()
         if not drop_calls and not self.is_stacked:
-            for func, args, kwargs in top:
-                func(*args, **kwargs)
+            with self.calling_ctx():
+                for func, args, kwargs in top:
+                    func(*args, **kwargs)
 
     def proxy(self, func):
         @functools.wraps(func)

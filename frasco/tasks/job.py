@@ -1,21 +1,21 @@
 from flask import has_app_context, current_app, has_request_context, session, request
 from frasco.users import user_login_context, is_user_logged_in, current_user
 from frasco.utils import import_string
-from frasco.ctx import ContextStack
+from frasco.ctx import ContextStack, DelayedCallsContext
 from flask_rq2.job import FlaskJob
 from rq.job import UNEVALUATED, dumps, Job as RQJob
 from contextlib import contextmanager
 
 
 prevent_circular_task_ctx = ContextStack()
+synchronous_tasks = DelayedCallsContext()
 
 
 @contextmanager
 def prevent_circular_task(ctx_id):
-    if ctx_id in prevent_circular_task_ctx.stack:
-        return
+    exists = ctx_id in prevent_circular_task_ctx.stack
     with prevent_circular_task_ctx(ctx_id):
-        yield
+        yield exists
 
 
 def pack_job_args(data):
@@ -108,7 +108,7 @@ class FrascoJob(FlaskJob):
 
     def perform(self):
         app = self.load_app()
-        if not app.config.get('RQ_ASYNC'):
+        if synchronous_tasks.calling_ctx.top or not app.config.get('RQ_ASYNC'):
             return self.perform_in_app_context()
         with app.app_context():
             rv = self.perform_in_app_context()
