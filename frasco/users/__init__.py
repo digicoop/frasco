@@ -1,7 +1,7 @@
 from frasco.ext import *
 from frasco.i18n import lazy_translate
 from frasco.utils import populate_obj, extract_unmatched_items
-from flask import render_template
+from flask import render_template, abort, request
 from flask_login import LoginManager, logout_user, login_required, login_url, login_fresh, confirm_login, fresh_login_required, user_logged_in
 import datetime
 import os
@@ -102,6 +102,7 @@ class FrascoUsers(Extension):
         "email_validation_ttl": None,
         "block_non_email_validated_users": False,
         "send_email_validation_email": False,
+        "login_after_email_validation": True,
         # logout
         "redirect_after_logout": "index",
         # oauth
@@ -203,9 +204,12 @@ class FrascoUsers(Extension):
         if state.options['block_non_email_validated_users']:
             @app.before_request
             def block_non_email_validated_users():
-                if current_user.is_authenticated and not current_user.email_validated and \
-                  request.endpoint not in ('users.logout', 'users.send_email_validation_email', 'users.validate_email'):
-                    return render_template("users/non_email_validated_users_block_page.html")
+                if current_user.is_authenticated and not current_user.email_validated and (not request.endpoint or \
+                  (request.endpoint not in ('users.logout', 'users.send_email_validation_email', 'users.validate_email', 'static') and \
+                  not request.endpoint.endswith('.static'))):
+                    if request.is_json:
+                        abort(403)
+                    return render_template("users/non_email_validated_users_block_page.html", email=current_user.email)
 
     @ext_stateful_method
     def user_validator(self, state, func):

@@ -122,6 +122,10 @@ def login():
                 session['login_remember'] = form.remember.data
                 return redirect(url_for('.login_2fa', flow=request.args.get('flow'), next=request.args.get('next')))
 
+            if state.options['block_non_email_validated_users'] and not user.email_validated:
+                clear_oauth_signup_session()
+                return render_template("users/non_email_validated_users_block_page.html", email=user.email)
+
             _do_login(user, form.remember.data)
 
             if state.options['enable_access_tokens'] and _is_programmatic_login():
@@ -235,6 +239,9 @@ def signup():
                     _save_oauth(user)
                 db.session.flush()
                 user_signed_up.send(user=user)
+                if state.options['block_non_email_validated_users'] and not user.email_validated:
+                    clear_oauth_signup_session()
+                    return render_template("users/non_email_validated_users_block_page.html", email=user.email)
                 if state.options["login_user_on_signup"]:
                     login_user(user, provider=user.signup_provider, skip_session=_is_programmatic_login() or _is_login_flow(LOGIN_FLOW_WEB_ACCESS_TOKEN))
 
@@ -342,15 +349,17 @@ def reset_password(token):
 
 @users_blueprint.route('/validate-email/send', methods=['POST'])
 def send_email_validation_email():
-    if not current_user.is_authenticated:
-        abort(401)
+    state = get_extension_state('frasco_users')
+    user = state.Model.query.filter_by(email=request.form['email'].lower()).first_or_404()
+    if user.email_validated:
+        abort(403)
 
-    send_user_validation_email(current_user)
+    send_user_validation_email(user)
 
     if request.values.get('next'):
         return redirect(request.values['next'])
 
-    return 'ok'
+    return render_template("users/non_email_validated_users_block_page.html", email=user.email)
 
 
 @users_blueprint.route('/validate-email/<token>', methods=['GET'])
@@ -365,6 +374,9 @@ def validate_email(token):
 
     with transaction():
         validate_user_email(user)
+
+    if not current_user.is_authenticated and state.options["login_after_email_validation"]:
+        login_user(user)
 
     if msg:
         flash(msg, "success")

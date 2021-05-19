@@ -3,6 +3,7 @@
 {% block users_content %}
 <form method="post" action="{{url_for('users.send_email_validation_email')}}">
     <input type="hidden" name="next" value="{{url_for_same()}}">
+    <input type="hidden" name="email" value="{{email}}">
     <button type="submit">{{_('Resend validation email')}}</button>
 </form>
 {% endblock %}
