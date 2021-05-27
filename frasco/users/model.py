@@ -88,6 +88,12 @@ class UserEmailValidatedMixin(object):
     email_validated = db.Column(db.Boolean, default=False)
     email_validated_at = db.Column(db.DateTime)
 
+    @property
+    def must_validate_email(self):
+        if get_extension_state('frasco_users').options['allow_non_email_validated_users_who_logged_in_before'] and self.last_login_at:
+            return False
+        return not self.email_validated
+
 
 class UserAuthTokenMixin(object):
     __token_identifier_property__ = 'auth_token'

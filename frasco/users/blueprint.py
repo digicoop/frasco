@@ -122,7 +122,7 @@ def login():
                 session['login_remember'] = form.remember.data
                 return redirect(url_for('.login_2fa', flow=request.args.get('flow'), next=request.args.get('next')))
 
-            if state.options['block_non_email_validated_users'] and not user.email_validated:
+            if state.options['block_non_email_validated_users'] and user.must_validate_email:
                 clear_oauth_signup_session()
                 return render_template("users/non_email_validated_users_block_page.html", email=user.email)
 

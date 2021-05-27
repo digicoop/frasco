@@ -103,6 +103,7 @@ class FrascoUsers(Extension):
         "block_non_email_validated_users": False,
         "send_email_validation_email": False,
         "login_after_email_validation": True,
+        "allow_non_email_validated_users_who_logged_in_before": True,
         # logout
         "redirect_after_logout": "index",
         # oauth
@@ -204,7 +205,7 @@ class FrascoUsers(Extension):
         if state.options['block_non_email_validated_users']:
             @app.before_request
             def block_non_email_validated_users():
-                if current_user.is_authenticated and not current_user.email_validated and (not request.endpoint or \
+                if current_user.is_authenticated and current_user.must_validate_email and (not request.endpoint or \
                   (request.endpoint not in ('users.logout', 'users.send_email_validation_email', 'users.validate_email', 'static') and \
                   not request.endpoint.endswith('.static'))):
                     if request.is_json:
