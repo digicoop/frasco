@@ -106,7 +106,7 @@ def login_user(user, *args, **kwargs):
     return True
     
 
-def signup_user(email_or_user, password=None, provider=None, flash_messages=True, send_signal=True, validate_email=False, **kwargs):
+def signup_user(email_or_user, password=None, provider=None, flash_messages=True, send_signal=True, validate_email=False, send_welcome_email=None, **kwargs):
     state = get_extension_state('frasco_users')
     if isinstance(email_or_user, state.Model):
         user = email_or_user
@@ -138,16 +138,23 @@ def signup_user(email_or_user, password=None, provider=None, flash_messages=True
         validate_user_email(user)
     elif state.options['send_email_validation_email']:
         send_user_validation_email(user)
+        if send_welcome_email is None and state.options['block_non_email_validated_users']:
+            send_welcome_email = False
 
-    if state.options["send_welcome_email"]:
-        from frasco.mail import send_mail
-        template = "users/welcome.txt" if state.options["send_welcome_email"] == True else state.options["send_welcome_email"]
-        send_mail(user.email, template, user=user, locale=getattr(user, 'locale', None))
+    if (send_welcome_email is None and state.options["send_welcome_email"]) or send_welcome_email:
+        send_user_welcome_email(user)
 
     logger.info('New signup as #%s' % user.id)
     if send_signal:
         user_signed_up.send(user=user)
     return user
+
+
+def send_user_welcome_email(user):
+    from frasco.mail import send_mail
+    state = get_extension_state('frasco_users')
+    template = "users/welcome.txt" if state.options["send_welcome_email"] == True else state.options["send_welcome_email"]
+    send_mail(user.email, template, user=user, locale=getattr(user, 'locale', None))
 
 
 class UserValidationFailedError(Exception):

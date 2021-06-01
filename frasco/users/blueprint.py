@@ -15,7 +15,7 @@ from .forms import *
 from .auth import authenticate
 from .auth.oauth import clear_oauth_signup_session
 from .signals import user_signed_up, email_validated
-from .user import is_user_logged_in, login_user, signup_user, UserValidationFailedError, check_rate_limit, send_user_validation_email, validate_user_email
+from .user import is_user_logged_in, login_user, signup_user, UserValidationFailedError, check_rate_limit, send_user_validation_email, validate_user_email, send_user_welcome_email
 from .password import generate_reset_password_token, update_password, validate_password, send_reset_password_token, PasswordValidationFailedError
 from .tokens import read_user_token, generate_user_token, TOKEN_NS_ACCESS_TOKEN, TOKEN_NS_2FA, TOKEN_NS_PASSWORD_RESET, TOKEN_NS_VALIDATE_EMAIL
 from .otp import verify_2fa
@@ -372,8 +372,13 @@ def validate_email(token):
     if not user:
         abort(404)
 
+    send_welcome_email = state.options['block_non_email_validated_users'] and user.must_validate_email
+
     with transaction():
         validate_user_email(user)
+
+    if send_welcome_email:
+        send_user_welcome_email(user)
 
     if not current_user.is_authenticated and state.options["login_after_email_validation"]:
         login_user(user)
