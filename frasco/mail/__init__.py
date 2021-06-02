@@ -12,7 +12,7 @@ from flask_mail import Mail
 import os
 import datetime
 
-from .message import create_message, clickable_links, log_message
+from .message import create_message, clickable_links, markdown_jinja, log_message
 from .provider import MailProvider, bulk_connection_context
 
 
@@ -77,6 +77,7 @@ class FrascoMail(Extension):
         state.jinja_env.macros.register_from_template("layouts/macros.html")
         state.jinja_env.default_layout = state.options["default_layout"]
         state.jinja_env.filters['clickable_links'] = clickable_links
+        state.jinja_env.filters['markdown'] = markdown_jinja
 
         if has_extension('frasco_babel', app):
             if state.options['default_locale'] is None:

@@ -164,3 +164,7 @@ def log_message(message, dump_dir=None, connection=None):
 _url_regexp = re.compile(r'(http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)')
 def clickable_links(text):
     return _url_regexp.sub(r'<a href="\1">\1</a>', text)
+
+
+def markdown_jinja(text):
+    return markdown.markdown(text, **get_extension_state('frasco_mail').options["markdown_options"])
