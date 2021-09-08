@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='2.5.2',
+    version='2.6.0',
     url='http://github.com/frascoweb/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -33,7 +33,6 @@ setup(
         'apispec~=2.0.2',
         'authlib~=0.14.1',
         'boto3~=1.12.1',
-        'cssmin~=0.2.0',
         'eventlet~=0.25.1',
         'Flask~=1.1.1',
         'Flask-Assets==2.0',
@@ -53,7 +52,6 @@ setup(
         'inflection~=0.3.1',
         'jinja-layout~=0.2',
         'jinja-macro-tags~=0.2',
-        'jsmin~=2.2.2',
         'Markdown~=3.1.1',
         'premailer~=3.6.1',
         'psycopg2-binary~=2.8.4',
