@@ -98,14 +98,14 @@ def login():
             return _login_redirect(_make_redirect_url(state.options.get("redirect_after_login_disallowed")))
     elif request.method == 'POST':
         user = None
-        if request.is_json:
-            try:
+        try:
+            if request.is_json:
                 payload = request.get_json()
-            except:
-                return jsonify(success=False)
-            user = authenticate(payload.get('identifier'), payload.get('password'))
-        elif form.validate():
-            user = authenticate(form.identifier.data, form.password.data)
+                user = authenticate(payload.get('identifier'), payload.get('password'))
+            elif form.validate():
+                user = authenticate(form.identifier.data, form.password.data)
+        except Exception as e:
+            current_app.log_exception(e)
 
         if user:
             if (state.options['expire_password_after'] and user.last_password_change_at and \
