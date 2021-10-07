@@ -53,22 +53,21 @@ def as_transaction(func):
     return wrapper
 
 
-_current_transaction_ctx = ContextStack()
-current_transaction = _current_transaction_ctx.make_proxy()
-
-
 def after_transaction_commit(func):
     delayed_tx_calls.call(func, [], {})
 
 
-@event.listens_for(SignallingSession, 'after_begin')
-def on_after_begin(session, transaction, connection):
-    _current_transaction_ctx.push(AttrDict())
+_current_transaction_ctx = ContextStack()
+current_transaction = _current_transaction_ctx.make_proxy()
 
-@event.listens_for(SignallingSession, 'after_commit')
-def on_after_commit(session):
-    _current_transaction_ctx.pop()
 
-@event.listens_for(SignallingSession, 'after_rollback')
-def on_after_rollback(session):
-    _current_transaction_ctx.pop()
+@event.listens_for(SignallingSession, 'after_transaction_create')
+def on_after_transaction_create(session, transaction):
+    if transaction.parent is None:
+        _current_transaction_ctx.push(AttrDict())
+
+
+@event.listens_for(SignallingSession, 'after_transaction_end')
+def on_after_transaction_end(session, transaction):
+    if transaction.parent is None:
+        _current_transaction_ctx.pop()
