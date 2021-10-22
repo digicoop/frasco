@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='2.6.2',
+    version='2.7.0',
     url='http://github.com/frascoweb/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -32,7 +32,7 @@ setup(
         'ago~=0.0.93',
         'apispec~=2.0.2',
         'authlib~=0.14.1',
-        'boto3~=1.12.1',
+        'boto3~=1.19.1',
         'eventlet~=0.25.1',
         'Flask~=1.1.1',
         'Flask-Assets==2.0',
@@ -61,7 +61,7 @@ setup(
         'python-socketio~=4.6.0',
         'PyYAML~=5.3',
         'redis~=3.5.3',
-        'requests~=2.22.0',
+        'requests~=2.26.0',
         'simplejson~=3.17.0',
         'suds-py3~=1.4.1.0',
         'speaklater~=1.3',
