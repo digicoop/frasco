@@ -175,6 +175,7 @@ class DatabaseDictSerializer(object):
             target = list(table.c[col].foreign_keys)[0].column.table
             data[col] = self._mapid(idmap, target.name, int(row[col]))
 
+        data = self._remap_data(table, row, data, idmap)
         data = self._validate_data(table, data)
         if not data:
             return
@@ -190,6 +191,9 @@ class DatabaseDictSerializer(object):
             else:
                 logger.debug('remap_insert(%s, %s)' % (table.name, data))
                 db.session.execute(table.insert(), data)
+
+    def _remap_data(self, table, row, data, idmap):
+        return data
 
     def _mapid(self, idmap, tablename, id, keep_existing=None):
         if keep_existing is None:
