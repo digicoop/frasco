@@ -109,15 +109,17 @@ class FrascoJob(FlaskJob):
     def perform(self):
         app = self.load_app()
         if synchronous_tasks.calling_ctx.top or not app.config.get('RQ_ASYNC'):
-            return self.perform_in_app_context()
+            return self.perform_in_app_context(True)
         with app.app_context():
             rv = self.perform_in_app_context()
         return rv
 
-    def perform_in_app_context(self):
-        if self.meta.get('forwarded_contexts'):
+    def perform_in_app_context(self, is_sync=False):
+        clear_extended_fowarded_contexts = {}
+        if not is_sync and self.meta.get('forwarded_contexts'):
             for ctx_import_str, stack in self.meta['forwarded_contexts'].items():
                 import_string(ctx_import_str).stack.extend(stack)
+                clear_extended_fowarded_contexts[ctx_import_str] = len(stack) # keep track using temp variable as if it runs in sync mode, stack will be modified
         try:
             current_user_id = self.meta.get('current_user_id')
             if current_user_id and not is_user_logged_in(): # user is already logged in if task is async=False
@@ -126,9 +128,9 @@ class FrascoJob(FlaskJob):
             else:
                 rv = RQJob.perform(self)
         finally:
-            if self.meta.get('forwarded_contexts'):
-                for ctx_import_str, stack in self.meta['forwarded_contexts'].items():
-                    del import_string(ctx_import_str).stack[-len(stack):]
+            if clear_extended_fowarded_contexts:
+                for ctx_import_str, clear_len in clear_extended_fowarded_contexts.items():
+                    del import_string(ctx_import_str).stack[-clear_len:]
         return rv
 
     def _execute(self):
