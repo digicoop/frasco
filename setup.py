@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='frasco',
-    version='2.7.2',
+    version='2.7.3',
     url='http://github.com/frascoweb/frasco',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -52,7 +52,7 @@ setup(
         'inflection~=0.3.1',
         'jinja-layout~=0.2',
         'jinja-macro-tags~=0.2',
-        'Markdown~=3.1.1',
+        'Markdown~=3.3.4',
         'premailer~=3.6.1',
         'psycopg2-binary~=2.8.4',
         'pyotp~=2.3.0',
