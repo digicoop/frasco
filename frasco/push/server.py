@@ -26,8 +26,8 @@ class PresenceEnabledRedisManager(socketio.RedisManager):
     def _emit_joined(self, room, sid, info):
         self.server.emit('%s:joined' % room, {"sid": sid, "info": info}, room=room, skip_sid=sid)
 
-    def enter_room(self, sid, namespace, room, skip_presence=False):
-        super(PresenceEnabledRedisManager, self).enter_room(sid, namespace, room)
+    def enter_room(self, sid, namespace, room, eio_sid=None, skip_presence=False):
+        super(PresenceEnabledRedisManager, self).enter_room(sid, namespace, room, eio_sid)
         if room and room != sid and not skip_presence:
             self.redis.sadd("%s%s:%s" % (self.presence_key_prefix, namespace, room), sid)
             self._emit_joined(room, sid, self.get_member_info(sid, namespace))
@@ -71,27 +71,26 @@ class PresenceEnabledRedisManager(socketio.RedisManager):
 class PresenceEnabledServer(socketio.Server):
     def enter_room(self, sid, room, namespace=None, skip_presence=False):
         namespace = namespace or '/'
-        self.logger.debug('%s is entering room %s [%s]', sid, room, namespace)
-        self.manager.enter_room(sid, namespace, room, skip_presence)
+        self.logger.info('%s is entering room %s [%s]', sid, room, namespace)
+        self.manager.enter_room(sid, namespace, room, skip_presence=skip_presence)
 
 
 def create_app(redis_url='redis://', channel='socketio', secret=None, presence_session_id=None, token_max_age=None, debug=False):
     mgr = PresenceEnabledRedisManager(redis_url, channel=channel, presence_session_id=presence_session_id)
-    sio = PresenceEnabledServer(client_manager=mgr, async_mode='eventlet', logger=debug, cors_allowed_origins='*') # client must be identified via url token so cors to * is not a big risk
+    sio = PresenceEnabledServer(client_manager=mgr, async_mode='eventlet', logger=debug, engineio_logger=debug, cors_allowed_origins='*') # client must be identified via url token so cors to * is not a big risk
     token_serializer = URLSafeTimedSerializer(secret)
     default_ns = '/'
 
     @sio.on('connect')
-    def connect(sid, env):
+    def connect(sid, environ, auth):
         if not secret:
             raise ConnectionRefusedError('no secret defined')
 
-        qs = urllib.parse.parse_qs(env['QUERY_STRING'])
-        if not 'token' in qs:
+        if not auth or not auth.get('token'):
             raise ConnectionRefusedError('missing token')
 
         try:
-            token_data = token_serializer.loads(qs['token'][0], max_age=token_max_age)
+            token_data = token_serializer.loads(auth['token'], max_age=token_max_age)
         except BadSignature:
             logger.debug('Client provided an invalid token')
             raise ConnectionRefusedError('invalid token')
@@ -103,7 +102,8 @@ def create_app(redis_url='redis://', channel='socketio', secret=None, presence_s
             user_info, allowed_rooms = token_data
             user_room = None
 
-        env['allowed_rooms'] = allowed_rooms
+        with sio.session(sid) as session:
+            session['allowed_rooms'] = allowed_rooms
         if user_info:
             mgr.set_member_info(sid, default_ns, user_info)
         if user_room:
@@ -120,9 +120,10 @@ def create_app(redis_url='redis://', channel='socketio', secret=None, presence_s
 
     @sio.on('join')
     def join(sid, data):
-        if sio.environ[sid].get('allowed_rooms') is not None and data['room'] not in sio.environ[sid]['allowed_rooms']:
-            logger.debug('Client %s is not allowed to join room %s' % (sid, data['room']))
-            return False
+        with sio.session(sid) as session:
+            if session.get('allowed_rooms') is not None and data['room'] not in session['allowed_rooms']:
+                logger.debug('Client %s is not allowed to join room %s' % (sid, data['room']))
+                return False
         sio.enter_room(sid, data['room'])
         logger.debug('Client %s has joined room %s' % (sid, data['room']))
         return get_room_members(sid, data)
@@ -138,12 +139,12 @@ def create_app(redis_url='redis://', channel='socketio', secret=None, presence_s
         logger.debug('Client %s has left room %s' % (sid, data['room']))
 
     @sio.on('set')
-    def set(sid, data):
+    def set_member_info(sid, data):
         mgr.set_member_info(sid, default_ns, data)
         logger.debug('Client %s has updated its user info: %s' % (sid, data))
 
     @sio.on('get')
-    def get(sid, data):
+    def get_member_info(sid, data):
         return mgr.get_member_info(data['sid'], default_ns)
 
     return socketio.WSGIApp(sio)

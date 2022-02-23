@@ -65,8 +65,7 @@ class FrascoPushConnection extends FrascoPushEventTarget {
       return Promise.resolve(this.socket.id);
     }
     return new Promise((resolve, reject) => {
-      options = Object.assign({forceNew: true}, options || {});
-      options.query = Object.assign(options.query || {}, {token: this.token});
+      options = Object.assign({forceNew: true, auth: {token: this.token}}, options || {});
       this.socket = io(this.url, options);
       this.rooms = {};
       this.socket.on('connect', () => {

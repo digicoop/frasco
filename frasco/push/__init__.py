@@ -5,7 +5,6 @@ from frasco.models import delayed_tx_calls
 from frasco.ctx import ContextStack, DelayedCallsContext
 from frasco.assets import expose_package
 from itsdangerous import URLSafeTimedSerializer
-from redis import Redis
 import hashlib
 import logging
 import subprocess
@@ -13,6 +12,7 @@ import sys
 import pickle
 import uuid
 import click
+import socketio
 
 
 suppress_push_events = ContextStack(False, default_item=True, ignore_nested=True)
@@ -68,7 +68,7 @@ class FrascoPush(Extension):
                 server_name.split(':')[0], state.options['server_port'])
 
         state.token_serializer = URLSafeTimedSerializer(state.options['secret'])
-        state.redis = Redis.from_url(state.options["redis_url"])
+        state.redis_manager = socketio.RedisManager(state.options['redis_url'], write_only=True)
         state.host_id = uuid.uuid4().hex
 
         @app.cli.command('push-server')
@@ -138,9 +138,7 @@ def _emit_push_event(event, data=None, skip_self=None, room=None, namespace=None
     if skip_self and has_request_context() and 'x-socketio-sid' in request.headers:
         skip_sid = request.headers['x-socketio-sid']
     logger.debug("Push event '%s' to {namespace=%s, room=%s, skip_sid=%s}: %s" % (event, namespace, room, skip_sid, data))
-    # we are publishing the events ourselves rather than using socketio.RedisManager because
-    # importing socketio while using flask debugger causes an error due to signals
-    return state.redis.publish(state.options['channel'], format_emit_data(event, data, namespace, room, skip_sid))
+    return state.redis_manager.emit(event, data=data, to=room, skip_sid=skip_sid, namespace=namespace)
 
 
 def emit_push_event(event, data=None, skip_self=None, room=None, namespace=None, prefix_event_with_room=True):
@@ -158,17 +156,3 @@ def get_user_room_name(user_id):
     if not state.options['secret']:
         raise Exception('A secret must be set to use emit_direct()')
     return hashlib.sha1((str(user_id) + state.options['secret']).encode('utf-8')).hexdigest()
-
-
-def format_emit_data(event, data, namespace=None, room=None, skip_sid=None):
-    # See https://github.com/miguelgrinberg/python-socketio/blob/master/socketio/pubsub_manager.py#L65
-    return pickle.dumps({
-        'method': 'emit',
-        'event': event,
-        'data': data,
-        'namespace': namespace or '/',
-        'room': room,
-        'skip_sid': skip_sid,
-        'callback': None,
-        'host_id': get_extension_state('frasco_push').host_id
-    })
