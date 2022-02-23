@@ -14,33 +14,6 @@ logger = logging.getLogger('frasco')
 class Config(FlaskConfig):
     """Subclass of Flask's Config class to add support to load from YAML file
     """
-
-    def from_json(self, filename, silent=False, deep_update=False):
-        filename = os.path.join(self.root_path, filename)
-
-        try:
-            with open(filename) as json_file:
-                obj = json.loads(json_file.read())
-        except IOError as e:
-            if silent and e.errno in (errno.ENOENT, errno.EISDIR):
-                return False
-            e.strerror = 'Unable to load configuration file (%s)' % e.strerror
-            raise
-        return self.from_mapping(obj, _deep_update=deep_update)
-
-    def from_yaml(self, filename, silent=False, deep_update=False):
-        filename = os.path.join(self.root_path, filename)
-
-        try:
-            with open(filename) as yaml_file:
-                obj = yaml.safe_load(yaml_file.read())
-        except IOError as e:
-            if silent and e.errno in (errno.ENOENT, errno.EISDIR):
-                return False
-            e.strerror = 'Unable to load configuration file (%s)' % e.strerror
-            raise
-        return self.from_mapping(obj, _deep_update=deep_update)
-
     def from_mapping(self, *mapping, **kwargs):
         mappings = []
         if len(mapping) == 1:
@@ -62,14 +35,34 @@ class Config(FlaskConfig):
                     self[key.upper()] = value
         return True
 
-    def from_file(self, filename, **kwargs):
-        if filename.endswith(".py"):
-            return self.from_pyfile(filename, **kwargs)
-        if filename.endswith(".js") or filename.endswith(".json"):
-            return self.from_json(filename, **kwargs)
-        if filename.endswith(".yml") or filename.endswith(".yaml"):
-            return self.from_yaml(filename, **kwargs)
-        raise RuntimeError("Unknown config file extension")
+    def from_file(self, filename, load=None, silent=False, deep_update=False):
+        if not load:
+            if filename.endswith(".py"):
+                return self.from_pyfile(filename, silent)
+            if filename.endswith(".js") or filename.endswith(".json"):
+                load = json.load
+            if filename.endswith(".yml") or filename.endswith(".yaml"):
+                load = yaml.safe_load
+
+        filename = os.path.join(self.root_path, filename)
+
+        try:
+            with open(filename) as f:
+                obj = load(f)
+        except OSError as e:
+            if silent and e.errno in (errno.ENOENT, errno.EISDIR):
+                return False
+
+            e.strerror = f"Unable to load configuration file ({e.strerror})"
+            raise
+
+        return self.from_mapping(obj, _deep_update=deep_update)
+
+    def from_json(self, filename, **kwargs):
+        return self.from_file(filename, json.load, **kwargs)
+
+    def from_yaml(self, filename, **kwargs):
+        return self.from_file(filename, yaml.safe_load, **kwargs)
 
 
 def load_config(app, config_filename='config.yml', env=None, deep_update=False):

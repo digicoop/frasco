@@ -207,9 +207,6 @@ class AttrDict(dict):
         except KeyError:
             raise KeyError(message)
 
-    def for_json(self):
-        return dict(self)
-
 
 class ShellError(Exception):
     def __init__(self, returncode, stderr):

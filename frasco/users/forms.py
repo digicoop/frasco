@@ -1,6 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import validators, StringField, PasswordField, BooleanField
-from wtforms.fields.html5 import EmailField
+from wtforms import validators, StringField, PasswordField, BooleanField, EmailField
 from frasco.i18n import lazy_translate
 
 
